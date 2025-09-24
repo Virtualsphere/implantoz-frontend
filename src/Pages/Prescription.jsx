@@ -1,6 +1,24 @@
-import React from 'react'
+import React, { useEffect, useState } from 'react'
+import { useNavigate } from "react-router-dom";
 
 const Prescription = () => {
+  const navigate = useNavigate();
+  const [prescriptions, setPrescription]= useState([]);
+  const [loading, setLoading]= useState(true);
+  useEffect(()=>{
+    const fetchPrescription= async()=>{
+      try {
+        const res= await fetch("");
+        const data= await res.json();
+        setPrescription(data);
+      } catch (error) {
+        console.error("Error Featching prescription:", err);
+      } finally{
+        setLoading(false);
+      }
+    } 
+  fetchPrescription();
+  }, []);
   return (
     <div className="bg-gray-300 min-h-screen">
       {/* Header Section */}
@@ -41,7 +59,7 @@ const Prescription = () => {
                   <span>⬇</span>
                   <span>Export</span>
                 </button>
-                <button className="flex items-center space-x-1 bg-blue-500 hover:bg-blue-600 text-white px-3 py-1 rounded text-sm">
+                <button onClick={() => navigate("/prescription/form")} className="flex items-center space-x-1 bg-blue-500 hover:bg-blue-600 text-white px-3 py-1 rounded text-sm">
                   <span>+</span>
                   <span>New Prescriptions</span>
                 </button>
@@ -74,11 +92,28 @@ const Prescription = () => {
                 </tr>
               </thead>
               <tbody className="bg-white">
-                <tr>
-                  <td colSpan="4" className="px-6 py-16 text-center text-gray-500 text-sm">
-                    No Data is available at the moment
-                  </td>
-                </tr>
+                {loading ? (
+                  <tr>
+                    <td colSpan="4" className="px-6 py-16 text-center text-gray-500 text-sm">
+                      Loading...
+                    </td>
+                  </tr>
+                ) : prescriptions.length === 0 ? (
+                  <tr>
+                    <td colSpan="4" className="px-6 py-16 text-center text-gray-500 text-sm">
+                      No Data is available at the moment
+                    </td>
+                  </tr>
+                ) : (
+                  prescriptions.map((p, i) => (
+                    <tr key={p.id} className="border-b border-gray-200">
+                      <td className="px-6 py-4 text-sm text-gray-700">{i + 1}</td>
+                      <td className="px-6 py-4 text-sm text-gray-700">{p.patientName}</td>
+                      <td className="px-6 py-4 text-sm text-gray-700">{p.doctorName}</td>
+                      <td className="px-6 py-4 text-sm text-gray-700">{p.consultationId}</td>
+                    </tr>
+                  ))
+                )}
               </tbody>
             </table>
           </div>

@@ -40,7 +40,7 @@ const InvoiceForm = () => {
           {/* Form Fields */}
           <div className="space-y-6">
             {/* First Row */}
-            <div className="grid grid-cols-3 gap-6">
+            <div className="grid md:grid-cols-3 gap-6">
               <div>
                 <label className="block text-sm text-gray-700 mb-2">Patient Name</label>
                 <input 
@@ -65,7 +65,7 @@ const InvoiceForm = () => {
             </div>
 
             {/* Second Row */}
-            <div className="grid grid-cols-3 gap-6">
+            <div className="grid md:grid-cols-3 gap-6">
               <div>
                 <label className="block text-sm text-gray-700 mb-2">Doctor Name</label>
                 <input 
@@ -112,7 +112,7 @@ const InvoiceForm = () => {
             </div>
 
             {/* Third Row */}
-            <div className="grid grid-cols-3 gap-6">
+            <div className="grid md:grid-cols-3 gap-6">
               <div>
                 <label className="block text-sm text-gray-700 mb-2">Payment Method</label>
                 <input 

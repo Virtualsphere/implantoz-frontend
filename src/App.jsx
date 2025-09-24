@@ -11,6 +11,9 @@ import Drugs from "./Pages/Drugs";
 import Invoicing from "./Pages/Invoicing";
 import Patient from "./Pages/Patient";
 import Prescription from "./Pages/Prescription";
+import PatientForm from "./Pages/PatientForm";
+import InvoicingForm from "./Pages/InvoiceForm";
+import PrescriptionForm from "./Pages/PrescriptionForm";
 const App = () => {
   return (
     <Router>
@@ -22,6 +25,9 @@ const App = () => {
           <Route path="invoicing" element={<Invoicing />} />
           <Route path="patient" element={<Patient />} />
           <Route path="prescription" element={<Prescription />} />
+          <Route path="patient/form" element={<PatientForm />} />
+          <Route path="invoicing/form" element={<InvoicingForm />} />
+          <Route path="prescription/form" element={<PrescriptionForm />} />
         </Route>
         <Route index element={<Signin />} />
         <Route path="signup" element={<Signup />} />

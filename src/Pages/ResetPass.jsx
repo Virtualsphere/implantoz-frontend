@@ -1,7 +1,26 @@
-import React from "react";
+import React, { useState } from "react";
 import Logo from "../assets/logo.png";
 import Pic from "../assets/Pic.png";
 const ResetPass = () => {
+  const [form, setForm]= useState({email:"", newPassword:""});
+   const [message, setMessage]= useState("");
+    const handleSubmit= async(e)=>{
+      e.preventDefault();
+      try {
+        const res= fetch(`http://103.118.16.129:5005/auth/reset-password/${email}`,
+          {
+            method: "POST",
+            headers: { "Content-Type" : "application/json" },
+            body: JSON.stringify(form)
+          }
+        )
+        const data= await res.json();
+        setMessage(data.message);
+      } catch (error) {
+        console.error(err);
+        setMessage("Something went wrong!");
+      }
+    }
   return (
     <div className="flex h-screen">
       {/* Left Side Image */}
@@ -70,7 +89,7 @@ const ResetPass = () => {
 
           {/* Back to login */}
           <p className="text-center text-sm mt-6">
-            <a href="#" className="text-blue-600 font-medium">
+            <a href="/" className="text-blue-600 font-medium">
               ← Log in
             </a>
           </p>

@@ -4,12 +4,6 @@ import ToothIcon from '../assets/tooth.png';
 
 const PrescriptionForm = () => {
   const [activeTab, setActiveTab] = useState('Chief Complaint')
-  const [examinations, setExaminations] = useState([])
-  const [investigation, setInvestigation]= useState([])
-  const [diagnosis, setDiagnosis]= useState([])
-  const [treatmentPlan, setTreatmentPlan]= useState([])
-  const [procedure, setProcedure]= useState([])
-  const [adviceInstructios,setAdviceInstruction]= useState([])
   const [examinationInput, setExaminationInput] = useState('')
   const [investigationInput, setInvestigationInput]= useState('')
   const [diagnosisInput, setDiagnosisInput]= useState('')
@@ -17,6 +11,48 @@ const PrescriptionForm = () => {
   const [procedureInput, setProcedureInput]= useState('')
   const [adviceInstructiosInput,setAdviceInstructionInput]= useState('')
   const [addedItems, setAddedItems] = useState('')
+
+  const [examinations, setExaminations] = useState([])
+  const [investigations, setInvestigations] = useState([])
+  const [diagnoses, setDiagnoses] = useState([])
+  const [treatmentPlans, setTreatmentPlans] = useState([])
+  const [procedures, setProcedures] = useState([])
+  const [adviceInstructions, setAdviceInstructions] = useState([])
+
+  const [form, setForm]= useState({
+    doctorName: "",
+    patientMail: "",
+    patientName: "",
+    teethSpecification: "",
+    chiefComplaint: "",
+    examination: [],
+    investigation: [],
+    diagnosis: [],
+    treatmentPlan: [],
+    procedure: [],
+    medication: [],
+    adviceInstruction: []
+  })
+
+  const [message, setMessage]= useState("");
+
+  const handleSubmit= async(e)=>{
+    e.preventDefault();
+    try {
+      const res= await fetch("",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(form)
+        }
+      )
+      const data= await res.json();
+      setMessage(data.message);
+    } catch (error) {
+      console.error(error);
+      setMessage("Something went wrong!");
+    }
+  }
 
   const tabs = [
     'Chief Complaint',
@@ -29,37 +65,31 @@ const PrescriptionForm = () => {
     'Advice Instructions'
   ]
 
-  const handleAddExamination = () => {
-    if (examinationInput.trim()) {
-      const newItem = examinationInput.trim()
-      setAddedItems([...addedItems, newItem])
-      setExaminationInput('')
-    }
-    if (investigationInput.trim()){
-      const newItem= investigationInput.trim()
-      setAddedItems([...addedItems, newItem])
-      setInvestigationInput('')
-    }
-    if(diagnosisInput.trim()){
-      const newItem= diagnosisInput.trim()
-      setAddedItems([...addedItems, newItem])
-      setDiagnosisInput('')
-    }
-    if(treatmentPlanInput.trim()){
-      const newItem= diagnosisInput.trim()
-      setAddedItems([...addedItems, newItem])
-      setTreatmentPlanInput('')
-    }
-  }
+  const handleAdd = (input, setInput, items, setItems, key) => {
+  if (input.trim()) {
+    const newItems = [...items, input.trim()]
+    setItems(newItems)
 
-  const handleRemoveItem = (index) => {
-    const newItems = addedItems.filter((_, i) => i !== index)
-    setAddedItems(newItems)
-  }
+    // Update form dynamically
+    setForm((prev) => ({ ...prev, [key]: newItems }))
 
-  const clearAll = () => {
-    setAddedItems([])
+    setInput('')
   }
+}
+
+// Remove item
+const handleRemove = (index, items, setItems, key) => {
+  const newItems = items.filter((_, i) => i !== index)
+  setItems(newItems)
+
+  setForm((prev) => ({ ...prev, [key]: newItems }))
+}
+
+// Clear all
+const handleClear = (setItems, key) => {
+  setItems([])
+  setForm((prev) => ({ ...prev, [key]: [] }))
+}
 
   const renderTabContent = () => {
     switch (activeTab) {
@@ -166,7 +196,7 @@ const PrescriptionForm = () => {
                   className="flex-1 border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-1 focus:ring-blue-500"
                 />
                 <button 
-                  onClick={handleAddExamination}
+                  onClick={() => handleAdd(examinationInput, setExaminationInput, examinations, setExaminations, "examination")}
                   className="bg-green-500 hover:bg-green-600 text-white p-2 rounded-full w-8 h-8 flex items-center justify-center"
                 >
                   +
@@ -174,23 +204,23 @@ const PrescriptionForm = () => {
               </div>
             </div>
 
-            {addedItems.length > 0 && (
+            {examinations.length > 0 && (
               <div>
                 <div className="flex items-center justify-between mb-2">
                   <span className="text-sm text-gray-700 font-medium">Added</span>
                   <button 
-                    onClick={clearAll}
+                    onClick={() => handleClear(setExaminations, "examination")}
                     className="text-red-500 text-sm hover:underline"
                   >
                     Clear all
                   </button>
                 </div>
                 <div className="border border-gray-200 rounded p-3 bg-gray-50 space-y-2">
-                  {addedItems.map((item, index) => (
+                  {examinations.map((item, index) => (
                     <div key={index} className="flex items-center justify-between">
                       <span className="text-sm">{item}</span>
-                      <button 
-                        onClick={() => handleRemoveItem(index)}
+                      <button
+                        onClick={() => handleRemove(index, examinations, setExaminations, "examination")}
                         className="text-red-500 hover:text-red-700"
                       >
                         ×
@@ -264,14 +294,43 @@ const PrescriptionForm = () => {
               <div className="flex items-center space-x-2">
                 <input 
                   type="text"
+                  value={investigationInput}
+                  onChange={(e) => setInvestigationInput(e.target.value)}
                   placeholder="Add investigation..."
                   className="flex-1 border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-1 focus:ring-blue-500"
                 />
-                <button className="bg-green-500 hover:bg-green-600 text-white p-2 rounded-full w-8 h-8 flex items-center justify-center">
+                <button onClick={() => handleAdd(investigationInput, setInvestigationInput, investigations, setInvestigations, "investigation")} className="bg-green-500 hover:bg-green-600 text-white p-2 rounded-full w-8 h-8 flex items-center justify-center">
                   +
                 </button>
               </div>
             </div>
+
+            {investigations.length > 0 && (
+              <div>
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-sm text-gray-700 font-medium">Added</span>
+                  <button 
+                    onClick={() => handleClear(setInvestigations, "investigation")}
+                    className="text-red-500 text-sm hover:underline"
+                  >
+                    Clear all
+                  </button>
+                </div>
+                <div className="border border-gray-200 rounded p-3 bg-gray-50 space-y-2">
+                  {investigations.map((item, index) => (
+                    <div key={index} className="flex items-center justify-between">
+                      <span className="text-sm">{item}</span>
+                      <button 
+                        onClick={() => handleRemove(index, investigations, setInvestigations, "investigation")}
+                        className="text-red-500 hover:text-red-700"
+                      >
+                        ×
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
 
             <div>
               <label className="block text-sm text-gray-700 mb-2">Quick Type</label>
@@ -337,14 +396,43 @@ const PrescriptionForm = () => {
               <div className="flex items-center space-x-2">
                 <input 
                   type="text"
+                  value={diagnosisInput}
+                  onChange={(e) => setDiagnosisInput(e.target.value)}
                   placeholder="Add diagnosis..."
                   className="flex-1 border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-1 focus:ring-blue-500"
                 />
-                <button className="bg-green-500 hover:bg-green-600 text-white p-2 rounded-full w-8 h-8 flex items-center justify-center">
+                <button onClick={() => handleAdd(diagnosisInput, setDiagnosisInput, diagnoses, setDiagnoses, "diagnosis")} className="bg-green-500 hover:bg-green-600 text-white p-2 rounded-full w-8 h-8 flex items-center justify-center">
                   +
                 </button>
               </div>
             </div>
+
+            {diagnoses.length > 0 && (
+              <div>
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-sm text-gray-700 font-medium">Added</span>
+                  <button 
+                    onClick={() => handleClear(setDiagnoses, "diagnosis")}
+                    className="text-red-500 text-sm hover:underline"
+                  >
+                    Clear all
+                  </button>
+                </div>
+                <div className="border border-gray-200 rounded p-3 bg-gray-50 space-y-2">
+                  {diagnoses.map((item, index) => (
+                    <div key={index} className="flex items-center justify-between">
+                      <span className="text-sm">{item}</span>
+                      <button 
+                        onClick={() => handleRemove(index, diagnoses, setDiagnoses, "diagnosis")}
+                        className="text-red-500 hover:text-red-700"
+                      >
+                        ×
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
 
             <div>
               <label className="block text-sm text-gray-700 mb-2">Quick Type</label>
@@ -410,14 +498,43 @@ const PrescriptionForm = () => {
                 <div className="flex items-center space-x-2">
                   <input 
                     type="text"
+                    value={treatmentPlanInput}
+                    onChange={(e) => setTreatmentPlanInput(e.target.value)}
                     placeholder="Procedure Details..."
                     className="flex-1 border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-1 focus:ring-blue-500"
                   />
-                  <button className="bg-green-500 hover:bg-green-600 text-white p-2 rounded-full w-8 h-8 flex items-center justify-center">
+                  <button onClick={() => handleAdd(treatmentPlanInput, setTreatmentPlanInput, treatmentPlans, setTreatmentPlans, "treatmentPlan")} className="bg-green-500 hover:bg-green-600 text-white p-2 rounded-full w-8 h-8 flex items-center justify-center">
                     +
                   </button>
                 </div>
               </div>
+
+              {treatmentPlans.length > 0 && (
+                <div>
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-sm text-gray-700 font-medium">Added</span>
+                    <button 
+                      onClick={() => handleClear(setTreatmentPlans, "treatmentPlan")}
+                      className="text-red-500 text-sm hover:underline"
+                    >
+                      Clear all
+                    </button>
+                  </div>
+                  <div className="border border-gray-200 rounded p-3 bg-gray-50 space-y-2">
+                    {treatmentPlans.map((item, index) => (
+                      <div key={index} className="flex items-center justify-between">
+                        <span className="text-sm">{item}</span>
+                        <button 
+                          onClick={() => handleRemove(index, treatmentPlans, setTreatmentPlans, "treatmentPlan")}
+                          className="text-red-500 hover:text-red-700"
+                        >
+                          ×
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
               
               <div className="flex lg:items-end md:items-end flex-col sm:flex-row gap-4">
                 <div className="flex-1">
@@ -488,14 +605,43 @@ const PrescriptionForm = () => {
               <div className="flex items-center space-x-2">
                 <input 
                   type="text"
+                  value={adviceInstructiosInput}
+                  onChange={(e) => setAdviceInstructionInput(e.target.value)}
                   placeholder="Type Advice/Instructions..."
                   className="flex-1 border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-1 focus:ring-blue-500"
                 />
-                <button className="bg-green-500 hover:bg-green-600 text-white p-2 rounded-full w-8 h-8 flex items-center justify-center">
+                <button onClick={() => handleAdd(adviceInstructiosInput, setAdviceInstructionInput, adviceInstructions, setAdviceInstructions, "adviceInstruction")} className="bg-green-500 hover:bg-green-600 text-white p-2 rounded-full w-8 h-8 flex items-center justify-center">
                   +
                 </button>
               </div>
             </div>
+
+            {adviceInstructions.length > 0 && (
+                <div>
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-sm text-gray-700 font-medium">Added</span>
+                    <button 
+                      onClick={() => handleClear(setAdviceInstructions, "adviceInstruction")}
+                      className="text-red-500 text-sm hover:underline"
+                    >
+                      Clear all
+                    </button>
+                  </div>
+                  <div className="border border-gray-200 rounded p-3 bg-gray-50 space-y-2">
+                    {adviceInstructions.map((item, index) => (
+                      <div key={index} className="flex items-center justify-between">
+                        <span className="text-sm">{item}</span>
+                        <button 
+                          onClick={() => handleRemove(index, adviceInstructions, setAdviceInstructions, "adviceInstruction")}
+                          className="text-red-500 hover:text-red-700"
+                        >
+                          ×
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
 
             <div>
               <label className="block text-sm text-gray-700 mb-2">Quick Type</label>

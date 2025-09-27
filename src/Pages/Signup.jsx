@@ -13,9 +13,15 @@ const Signup = () => {
         body: JSON.stringify(form)
       })
       const data= await res.json();
-      setMessage(data.message);
+      if (res.ok) {
+      // ✅ 200–299 response (success)
+      setMessage(data.message); // use the message from backend
+      } else {
+        // ❌ Backend responded with an error (e.g., 400 or 500)
+        setMessage(`Error: ${data.message || "Something went wrong"}`);
+      }
     } catch (error) {
-      console.error(err);
+      console.error(error);
       setMessage("Something went wrong!");
     }
   }

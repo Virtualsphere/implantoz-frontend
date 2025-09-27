@@ -12,7 +12,7 @@ const Prescription = () => {
         const data= await res.json();
         setPrescription(data);
       } catch (error) {
-        console.error("Error Featching prescription:", err);
+        console.error("Error Featching prescription:", error);
       } finally{
         setLoading(false);
       }

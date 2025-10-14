@@ -10,7 +10,7 @@ const Signin = () => {
   const handleSubmit= async(e)=>{
     e.preventDefault();
     try {
-      const res= fetch("http://103.118.16.129:5005/auth/login",
+      const res= await fetch("http://localhost:5000/auth/login",
         {
           method: "POST",
           headers: { "Content-Type" : "application/json" },
@@ -18,9 +18,17 @@ const Signin = () => {
         }
       )
       const data= await res.json();
-      setMessage(data.message);
+      if (res.ok) {
+        localStorage.setItem("token", data.token);
+        setMessage(data.message || "Login successful!");
+        setTimeout(() => {
+          navigate("/dashboard");
+        }, 1000);
+      } else {
+        setMessage(data.message || "Invalid credentials!");
+      }
     } catch (error) {
-      console.error(err);
+      console.error(error);
       setMessage("Something went wrong!");
     }
   }
@@ -54,7 +62,7 @@ const Signin = () => {
               placeholder="Enter your e-mail"
               className="w-full p-2 border border-gray-300 rounded-md mb-4"
               value={form.email}
-              onChange={(e)=>setForm({ ...form, name: e.target.value })}
+              onChange={(e)=>setForm({ ...form, email: e.target.value })}
             />
 
             <label className="block text-sm font-semibold mb-1">Password*</label>
@@ -63,7 +71,7 @@ const Signin = () => {
               placeholder="Enter your password"
               className="w-full p-2 border border-gray-300 rounded-md"
               value={form.password}
-              onChange={(e)=>setForm({ ...form, name: e.target.value })}
+              onChange={(e)=>setForm({ ...form, password: e.target.value })}
             />
             <p className="text-xs text-gray-500 mt-1 mb-4">
               Must be at least 8 characters.
@@ -72,6 +80,7 @@ const Signin = () => {
             <button type="submit" className="w-full bg-blue-900 text-white py-2 rounded-md font-semibold hover:bg-blue-800">
               Log in
             </button>
+            {message && <p>{message}</p>}
           </form>
 
           {/* Divider */}

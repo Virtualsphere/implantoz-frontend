@@ -38,7 +38,7 @@ const PatientForm = () => {
 
 const handleBasicSubmit = async () => {
   try {
-    const res = await fetch("http://103.118.16.129:5005/api/create-patient", {
+    const res = await fetch("http://localhost:5000/api/create-patient", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -66,7 +66,7 @@ const handleAddressSubmit = async () => {
     return;
   }
   try {
-    const res = await fetch(`http://103.118.16.129:5005/api/add-address/${patientId}`, {
+    const res = await fetch(`http://localhost:5000/api/add-address/${patientId}`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -91,7 +91,7 @@ const handleMedicalSubmit = async () => {
     return;
   }
   try {
-    const res = await fetch(`http://103.118.16.129:5005/api/add-medical-history/${patientId}`, {
+    const res = await fetch(`http://localhost:5000/api/add-medical-history/${patientId}`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({

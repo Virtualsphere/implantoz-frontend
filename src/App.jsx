@@ -14,6 +14,8 @@ import Prescription from "./Pages/Prescription";
 import PatientForm from "./Pages/PatientForm";
 import InvoicingForm from "./Pages/InvoiceForm";
 import PrescriptionForm from "./Pages/PrescriptionForm";
+import DrugsForm from "./Pages/DrugsForm";
+import SetPass from "./Pages/SetPass";
 const App = () => {
   return (
     <Router>
@@ -28,10 +30,12 @@ const App = () => {
           <Route path="patient/form" element={<PatientForm />} />
           <Route path="invoicing/form" element={<InvoicingForm />} />
           <Route path="prescription/form" element={<PrescriptionForm />} />
+          <Route path="drugs/form" element={<DrugsForm />} />
         </Route>
         <Route index element={<Signin />} />
         <Route path="signup" element={<Signup />} />
         <Route path="reset-password" element={<ResetPass />} />
+        <Route path="set-password" element={<SetPass />} />
       </Routes>
     </Router>
   );

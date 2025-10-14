@@ -1,13 +1,15 @@
 import React, { useState } from "react";
 import Logo from "../assets/logo.png";
 import Pic from "../assets/Pic.png";
+import { useNavigate } from "react-router-dom";
 const Signup = () => {
   const [form, setForm]= useState({ name:"", email:"", password:"" });
   const [message, setMessage]= useState("");
+  const navigate = useNavigate();
   const handleSubmit= async(e)=>{
     e.preventDefault();
     try {
-      const res= await fetch("http://103.118.16.129:5005/auth/register", {
+      const res= await fetch("http://localhost:5000/auth/register", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(form)
@@ -16,6 +18,9 @@ const Signup = () => {
       if (res.ok) {
       // ✅ 200–299 response (success)
       setMessage(data.message); // use the message from backend
+      setTimeout(() => {
+          navigate("/"); // redirect to login
+        }, 1500);
       } else {
         // ❌ Backend responded with an error (e.g., 400 or 500)
         setMessage(`Error: ${data.message || "Something went wrong"}`);
@@ -80,6 +85,7 @@ const Signup = () => {
             <button type="submit" className="w-full bg-blue-900 text-white py-2 rounded-md font-semibold hover:bg-blue-800">
               Get started
             </button>
+            {message && <p>{message}</p>}
           </form>
 
           {/* Divider */}

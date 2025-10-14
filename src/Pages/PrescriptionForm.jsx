@@ -36,21 +36,85 @@ const PrescriptionForm = () => {
 
   const [message, setMessage]= useState("");
 
+  const API_ENDPOINTS = {
+    "Chief Complaint": "/api/prescriptions/chief-complaint",
+    "Examination": "/api/prescriptions/examination",
+    "Investigation / Finding": "/api/prescriptions/investigation",
+    "Diagnosis": "/api/prescriptions/diagnosis",
+    "Treatment Plan": "/api/prescriptions/treatment-plan",
+    "Procedure": "/api/prescriptions/procedure",
+    "Medication": "/api/prescriptions/medication",
+    "Advice Instructions": "/api/prescriptions/advice-instructions",
+  }
+
   const handleSubmit= async(e)=>{
-    e.preventDefault();
     try {
-      const res= await fetch("",
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(form)
+    const endpoint = API_ENDPOINTS[activeTab]
+    if (!endpoint) {
+      setMessage("No API endpoint for this tab")
+      return
+    }
+
+    let basePayload = {
+      doctorName: form.doctorName,
+      patientMail: form.patientMail,
+      patientName: form.patientName,
+      teethSpecification: form.teethSpecification,
+    };
+
+    // Pick only relevant part of the form for this tab
+    let payload = {}
+    switch (activeTab) {
+      case "Chief Complaint":
+        payload = {
+          ...basePayload,
+          chiefComplaint: form.chiefComplaint,
         }
-      )
-      const data= await res.json();
-      setMessage(data.message);
-    } catch (error) {
-      console.error(error);
-      setMessage("Something went wrong!");
+        break
+
+      case "Examination":
+        payload = { ...basePayload, examination: form.examination }
+        break
+
+      case "Investigation / Finding":
+        payload = { ...basePayload, investigation: form.investigation }
+        break
+
+      case "Diagnosis":
+        payload = { ...basePayload, diagnosis: form.diagnosis }
+        break
+
+      case "Treatment Plan":
+        payload = { ...basePayload, treatmentPlan: form.treatmentPlan }
+        break
+
+      case "Procedure":
+        payload = { ...basePayload, procedure: form.procedure }
+        break
+
+      case "Medication":
+        payload = { ...basePayload, medication: form.medication }
+        break
+
+      case "Advice Instructions":
+        payload = { ...basePayload, adviceInstruction: form.adviceInstruction }
+        break
+
+      default:
+        break
+    }
+
+    const res = await fetch(endpoint, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    })
+
+    const data = await res.json()
+    setMessage(data.message || "Saved successfully")
+    } catch (err) {
+      console.error(err)
+      setMessage("Something went wrong")
     }
   }
 
@@ -91,49 +155,102 @@ const handleClear = (setItems, key) => {
   setForm((prev) => ({ ...prev, [key]: [] }))
 }
 
+  const PatientNameField= ({ form, setForm })=>{
+    return(
+      <div>
+          <label className="block text-sm text-gray-700 mb-2">Patient Name</label>
+          <input 
+            type="text"
+            value={form.patientName}
+            onChange={(e) => setForm({ ...form, patientName: e.target.value })}
+            className="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-1 focus:ring-blue-500"
+          />
+      </div>
+    )
+  }
+
+  const PatientMailIdField= ({ form, setForm })=>{
+      return(
+        <div>
+          <label className="block text-sm text-gray-700 mb-2">Patient Mail Id</label>
+          <input 
+            type="email"
+            value={form.patientMail}
+            onChange={(e) => setForm({ ...form, patientMail: e.target.value })}
+            className="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-1 focus:ring-blue-500"
+          />
+        </div>
+      )
+  }
+
+  const DoctorNameField= ({ form, setForm })=>{
+    return(
+      <div>
+          <label className="block text-sm text-gray-700 mb-2">Doctor Name</label>
+          <input 
+            type="text"
+            value={form.doctorName}
+            onChange={(e) => setForm({ ...form, doctorName: e.target.value })}
+            className="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-1 focus:ring-blue-500"
+          />
+      </div>
+    )
+  }
+
+  const TeethPatientField = ({ form, setForm })=>{
+    return(
+      <div>
+          <label className="block text-sm text-gray-700 mb-2">Teeth Specification</label>
+          <div className="flex items-center space-x-2 relative">
+            <img src={ToothIcon} alt="tooth" 
+              className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400"
+            />
+            <input
+              type="text"
+              value={form.teethSpecification}
+              onChange={(e) => setForm({ ...form, teethSpecification: e.target.value })}
+              className="w-full pl-10 border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-1 focus:ring-blue-500"
+            />
+          </div>
+      </div>
+    )
+  }
+
+
   const renderTabContent = () => {
     switch (activeTab) {
       case 'Chief Complaint':
         return (
           <div className="space-y-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
               <div>
-                <label className="block text-sm text-gray-700 mb-2">Patient Name</label>
-                <input 
-                  type="text" 
-                  className="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-1 focus:ring-blue-500"
-                />
+                  <label className="block text-sm text-gray-700 mb-2">Patient Name</label>
+                  <input 
+                    type="text"
+                    value={form.patientName}
+                    onChange={(e) => setForm({ ...form, patientName: e.target.value })}
+                    className="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                  />
               </div>
               <div>
                 <label className="block text-sm text-gray-700 mb-2">Patient Mail Id</label>
                 <input 
-                  type="email" 
-                  className="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-1 focus:ring-blue-500"
-                />
-              </div>
-            </div>
-            
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div>
-                <label className="block text-sm text-gray-700 mb-2">Doctor Name</label>
-                <input 
-                  type="text" 
+                  type="email"
+                  value={form.patientMail}
+                  onChange={(e) => setForm({ ...form, patientMail: e.target.value })}
                   className="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-1 focus:ring-blue-500"
                 />
               </div>
               <div>
-                <label className="block text-sm text-gray-700 mb-2">Teeth Specification</label>
-                <div className="flex items-center space-x-2 relative">
-                  <img src={ToothIcon} alt="" 
-                  className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400"/>
-                  <input
+                  <label className="block text-sm text-gray-700 mb-2">Doctor Name</label>
+                  <input 
                     type="text"
-                    className="w-full pl-10 border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                    value={form.doctorName}
+                    onChange={(e) => setForm({ ...form, doctorName: e.target.value })}
+                    className="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-1 focus:ring-blue-500"
                   />
-                </div>
               </div>
             </div>
-
             <div>
               <label className="block text-sm text-gray-700 mb-4">Chief Complaint</label>
               <textarea 
@@ -147,44 +264,49 @@ const handleClear = (setItems, key) => {
       case 'Examination':
         return (
           <div className="space-y-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
               <div>
-                <label className="block text-sm text-gray-700 mb-2">Patient Name</label>
-                <input 
-                  type="text" 
-                  className="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-1 focus:ring-blue-500"
-                />
+                  <label className="block text-sm text-gray-700 mb-2">Patient Name</label>
+                  <input 
+                    type="text"
+                    value={form.patientName}
+                    onChange={(e) => setForm({ ...form, patientName: e.target.value })}
+                    className="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                  />
               </div>
               <div>
                 <label className="block text-sm text-gray-700 mb-2">Patient Mail Id</label>
                 <input 
-                  type="email" 
+                  type="email"
+                  value={form.patientMail}
+                  onChange={(e) => setForm({ ...form, patientMail: e.target.value })}
                   className="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-1 focus:ring-blue-500"
                 />
               </div>
-            </div>
-            
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div>
-                <label className="block text-sm text-gray-700 mb-2">Doctor Name</label>
-                <input 
-                  type="text" 
-                  className="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-1 focus:ring-blue-500"
-                />
+                  <label className="block text-sm text-gray-700 mb-2">Doctor Name</label>
+                  <input 
+                    type="text"
+                    value={form.doctorName}
+                    onChange={(e) => setForm({ ...form, doctorName: e.target.value })}
+                    className="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                  />
               </div>
               <div>
                 <label className="block text-sm text-gray-700 mb-2">Teeth Specification</label>
                 <div className="flex items-center space-x-2 relative">
-                  <img src={ToothIcon} alt="" 
-                  className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400"/>
+                  <img src={ToothIcon} alt="tooth" 
+                    className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400"
+                  />
                   <input
                     type="text"
+                    value={form.teethSpecification}
+                    onChange={(e) => setForm({ ...form, teethSpecification: e.target.value })}
                     className="w-full pl-10 border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-1 focus:ring-blue-500"
                   />
                 </div>
               </div>
             </div>
-
             <div>
               <label className="block text-sm text-gray-700 mb-2">Add Examinations</label>
               <div className="flex items-center space-x-2">
@@ -251,44 +373,49 @@ const handleClear = (setItems, key) => {
       case 'Investigation / Finding':
         return (
           <div className="space-y-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
               <div>
-                <label className="block text-sm text-gray-700 mb-2">Patient Name</label>
-                <input 
-                  type="text" 
-                  className="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-1 focus:ring-blue-500"
-                />
+                  <label className="block text-sm text-gray-700 mb-2">Patient Name</label>
+                  <input 
+                    type="text"
+                    value={form.patientName}
+                    onChange={(e) => setForm({ ...form, patientName: e.target.value })}
+                    className="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                  />
               </div>
               <div>
                 <label className="block text-sm text-gray-700 mb-2">Patient Mail Id</label>
                 <input 
-                  type="email" 
+                  type="email"
+                  value={form.patientMail}
+                  onChange={(e) => setForm({ ...form, patientMail: e.target.value })}
                   className="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-1 focus:ring-blue-500"
                 />
               </div>
-            </div>
-            
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div>
-                <label className="block text-sm text-gray-700 mb-2">Doctor Name</label>
-                <input 
-                  type="text" 
-                  className="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-1 focus:ring-blue-500"
-                />
+                  <label className="block text-sm text-gray-700 mb-2">Doctor Name</label>
+                  <input 
+                    type="text"
+                    value={form.doctorName}
+                    onChange={(e) => setForm({ ...form, doctorName: e.target.value })}
+                    className="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                  />
               </div>
               <div>
                 <label className="block text-sm text-gray-700 mb-2">Teeth Specification</label>
                 <div className="flex items-center space-x-2 relative">
-                  <img src={ToothIcon} alt="" 
-                  className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400"/>
+                  <img src={ToothIcon} alt="tooth" 
+                    className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400"
+                  />
                   <input
                     type="text"
+                    value={form.teethSpecification}
+                    onChange={(e) => setForm({ ...form, teethSpecification: e.target.value })}
                     className="w-full pl-10 border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-1 focus:ring-blue-500"
                   />
                 </div>
               </div>
             </div>
-
             <div>
               <label className="block text-sm text-gray-700 mb-2">Add Investigation</label>
               <div className="flex items-center space-x-2">
@@ -352,45 +479,49 @@ const handleClear = (setItems, key) => {
       case 'Diagnosis':
         return (
           <div className="space-y-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
               <div>
-                <label className="block text-sm text-gray-700 mb-2">Patient Name</label>
-                <input 
-                  type="text" 
-                  className="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-1 focus:ring-blue-500"
-                />
+                  <label className="block text-sm text-gray-700 mb-2">Patient Name</label>
+                  <input 
+                    type="text"
+                    value={form.patientName}
+                    onChange={(e) => setForm({ ...form, patientName: e.target.value })}
+                    className="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                  />
               </div>
               <div>
                 <label className="block text-sm text-gray-700 mb-2">Patient Mail Id</label>
                 <input 
-                  type="email" 
+                  type="email"
+                  value={form.patientMail}
+                  onChange={(e) => setForm({ ...form, patientMail: e.target.value })}
                   className="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-1 focus:ring-blue-500"
                 />
               </div>
-            </div>
-            
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div>
-                <label className="block text-sm text-gray-700 mb-2">Doctor Name</label>
-                <input 
-                  type="text" 
-                  className="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-1 focus:ring-blue-500"
-                />
+                  <label className="block text-sm text-gray-700 mb-2">Doctor Name</label>
+                  <input 
+                    type="text"
+                    value={form.doctorName}
+                    onChange={(e) => setForm({ ...form, doctorName: e.target.value })}
+                    className="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                  />
               </div>
               <div>
                 <label className="block text-sm text-gray-700 mb-2">Teeth Specification</label>
-                <div className="flex items-center space-x-2">
-                  <button className="bg-blue-600 text-white px-2 py-1 rounded text-xs">
-                    8/1
-                  </button>
-                  <input 
-                    type="text" 
-                    className="flex-1 border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                <div className="flex items-center space-x-2 relative">
+                  <img src={ToothIcon} alt="tooth" 
+                    className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400"
+                  />
+                  <input
+                    type="text"
+                    value={form.teethSpecification}
+                    onChange={(e) => setForm({ ...form, teethSpecification: e.target.value })}
+                    className="w-full pl-10 border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-1 focus:ring-blue-500"
                   />
                 </div>
               </div>
             </div>
-
             <div>
               <label className="block text-sm text-gray-700 mb-2">Add Diagnosis</label>
               <div className="flex items-center space-x-2">
@@ -454,44 +585,49 @@ const handleClear = (setItems, key) => {
       case 'Treatment Plan':
         return (
           <div className="space-y-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
               <div>
-                <label className="block text-sm text-gray-700 mb-2">Patient Name</label>
-                <input 
-                  type="text" 
-                  className="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-1 focus:ring-blue-500"
-                />
+                  <label className="block text-sm text-gray-700 mb-2">Patient Name</label>
+                  <input 
+                    type="text"
+                    value={form.patientName}
+                    onChange={(e) => setForm({ ...form, patientName: e.target.value })}
+                    className="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                  />
               </div>
               <div>
                 <label className="block text-sm text-gray-700 mb-2">Patient Mail Id</label>
                 <input 
-                  type="email" 
+                  type="email"
+                  value={form.patientMail}
+                  onChange={(e) => setForm({ ...form, patientMail: e.target.value })}
                   className="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-1 focus:ring-blue-500"
                 />
               </div>
-            </div>
-            
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div>
-                <label className="block text-sm text-gray-700 mb-2">Doctor Name</label>
-                <input 
-                  type="text" 
-                  className="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-1 focus:ring-blue-500"
-                />
+                  <label className="block text-sm text-gray-700 mb-2">Doctor Name</label>
+                  <input 
+                    type="text"
+                    value={form.doctorName}
+                    onChange={(e) => setForm({ ...form, doctorName: e.target.value })}
+                    className="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                  />
               </div>
               <div>
                 <label className="block text-sm text-gray-700 mb-2">Teeth Specification</label>
                 <div className="flex items-center space-x-2 relative">
-                  <img src={ToothIcon} alt="" 
-                  className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400"/>
+                  <img src={ToothIcon} alt="tooth" 
+                    className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400"
+                  />
                   <input
                     type="text"
+                    value={form.teethSpecification}
+                    onChange={(e) => setForm({ ...form, teethSpecification: e.target.value })}
                     className="w-full pl-10 border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-1 focus:ring-blue-500"
                   />
                 </div>
               </div>
             </div>
-
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div>
                 <label className="block text-sm text-gray-700 mb-2">Add Procedure Details</label>
@@ -570,36 +706,227 @@ const handleClear = (setItems, key) => {
           </div>
         )
 
-      case 'Advice Instructions':
+      case 'Medication':
         return (
           <div className="space-y-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {/* Common Patient Fields */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
               <div>
-                <label className="block text-sm text-gray-700 mb-2">Patient Name</label>
-                <input 
-                  type="text" 
-                  className="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-1 focus:ring-blue-500"
-                />
+                  <label className="block text-sm text-gray-700 mb-2">Patient Name</label>
+                  <input 
+                    type="text"
+                    value={form.patientName}
+                    onChange={(e) => setForm({ ...form, patientName: e.target.value })}
+                    className="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                  />
               </div>
               <div>
                 <label className="block text-sm text-gray-700 mb-2">Patient Mail Id</label>
                 <input 
-                  type="email" 
+                  type="email"
+                  value={form.patientMail}
+                  onChange={(e) => setForm({ ...form, patientMail: e.target.value })}
                   className="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-1 focus:ring-blue-500"
                 />
               </div>
-            </div>
-            
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div>
-                <label className="block text-sm text-gray-700 mb-2">Doctor Name</label>
-                <input 
-                  type="text" 
-                  className="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-1 focus:ring-blue-500"
-                />
+                  <label className="block text-sm text-gray-700 mb-2">Doctor Name</label>
+                  <input 
+                    type="text"
+                    value={form.doctorName}
+                    onChange={(e) => setForm({ ...form, doctorName: e.target.value })}
+                    className="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                  />
               </div>
             </div>
 
+            {/* Medication Table */}
+            <div className="space-y-4">
+              <div className="overflow-x-auto border border-gray-200 rounded">
+                <table className="min-w-full divide-y divide-gray-200">
+                  <thead className="bg-gray-50">
+                    <tr>
+                      <th className="px-4 py-2 text-left text-sm font-medium text-gray-700">Drug Name</th>
+                      <th className="px-4 py-2 text-left text-sm font-medium text-gray-700">Generic</th>
+                      <th className="px-4 py-2 text-left text-sm font-medium text-gray-700">Frequency</th>
+                      <th className="px-4 py-2 text-left text-sm font-medium text-gray-700">Duration</th>
+                      <th className="px-4 py-2 text-left text-sm font-medium text-gray-700">Instruction</th>
+                      <th className="px-4 py-2 text-left text-sm font-medium text-gray-700 text-center">Action</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-100">
+                    {form.medication.length > 0 ? (
+                      form.medication.map((med, index) => (
+                        <tr key={index} className="bg-white">
+                          {/* Drug Name */}
+                          <td className="px-4 py-2">
+                            <input
+                              type="text"
+                              value={med.drugName}
+                              onChange={(e) => {
+                                const updated = [...form.medication];
+                                updated[index].drugName = e.target.value;
+                                setForm({ ...form, medication: updated });
+                              }}
+                              placeholder="Medicine Name"
+                              className="w-full border border-gray-300 rounded px-2 py-1 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                            />
+                          </td>
+
+                          {/* Generic */}
+                          <td className="px-4 py-2">
+                            <input
+                              type="text"
+                              value={med.generic}
+                              onChange={(e) => {
+                                const updated = [...form.medication];
+                                updated[index].generic = e.target.value;
+                                setForm({ ...form, medication: updated });
+                              }}
+                              placeholder="Generic"
+                              className="w-full border border-gray-300 rounded px-2 py-1 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                            />
+                          </td>
+
+                          {/* Frequency Dropdown */}
+                          <td className="px-4 py-2">
+                            <select
+                              value={med.frequency}
+                              onChange={(e) => {
+                                const updated = [...form.medication];
+                                updated[index].frequency = e.target.value;
+                                setForm({ ...form, medication: updated });
+                              }}
+                              className="w-full border border-gray-300 rounded px-2 py-1 bg-white focus:outline-none focus:ring-1 focus:ring-blue-500"
+                            >
+                              <option value="">Select</option>
+                              <option value="1-0-0">1-0-0</option>
+                              <option value="1-1-0">1-1-0</option>
+                              <option value="1-1-1">1-1-1</option>
+                              <option value="0-1-0">0-1-0</option>
+                              <option value="0-0-1">0-0-1</option>
+                            </select>
+                          </td>
+
+                          {/* Duration Dropdown */}
+                          <td className="px-4 py-2">
+                            <select
+                              value={med.duration}
+                              onChange={(e) => {
+                                const updated = [...form.medication];
+                                updated[index].duration = e.target.value;
+                                setForm({ ...form, medication: updated });
+                              }}
+                              className="w-full border border-gray-300 rounded px-2 py-1 bg-white focus:outline-none focus:ring-1 focus:ring-blue-500"
+                            >
+                              <option value="">Select</option>
+                              <option value="1 Day">1 Day</option>
+                              <option value="3 Days">3 Days</option>
+                              <option value="5 Days">5 Days</option>
+                              <option value="7 Days">7 Days</option>
+                              <option value="14 Days">14 Days</option>
+                            </select>
+                          </td>
+
+                          {/* Instruction */}
+                          <td className="px-4 py-2">
+                            <input
+                              type="text"
+                              value={med.instruction}
+                              onChange={(e) => {
+                                const updated = [...form.medication];
+                                updated[index].instruction = e.target.value;
+                                setForm({ ...form, medication: updated });
+                              }}
+                              placeholder="Instruction"
+                              className="w-full border border-gray-300 rounded px-2 py-1 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                            />
+                          </td>
+
+                          {/* Remove Button */}
+                          <td className="px-4 py-2 text-center">
+                            <button
+                              onClick={() => {
+                                const updated = form.medication.filter((_, i) => i !== index);
+                                setForm({ ...form, medication: updated });
+                              }}
+                              className="text-red-500 hover:text-red-700 font-semibold text-lg"
+                            >
+                              ×
+                            </button>
+                          </td>
+                        </tr>
+                      ))
+                    ) : (
+                      <tr>
+                        <td
+                          colSpan="6"
+                          className="text-center text-gray-400 text-sm py-4"
+                        >
+                          No medicines added yet.
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+
+              {/* Add Medicine Button */}
+              <div className="pt-2">
+                <button
+                  onClick={() => {
+                    const newMed = {
+                      drugName: "",
+                      generic: "",
+                      frequency: "",
+                      duration: "",
+                      instruction: "",
+                    };
+                    setForm({ ...form, medication: [...form.medication, newMed] });
+                  }}
+                  className="text-blue-600 text-sm font-medium hover:underline"
+                >
+                  + Add Medicine
+                </button>
+              </div>
+            </div>
+          </div>
+        );
+
+
+
+      case 'Advice Instructions':
+        return (
+          <div className="space-y-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+              <div>
+                  <label className="block text-sm text-gray-700 mb-2">Patient Name</label>
+                  <input 
+                    type="text"
+                    value={form.patientName}
+                    onChange={(e) => setForm({ ...form, patientName: e.target.value })}
+                    className="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                  />
+              </div>
+              <div>
+                <label className="block text-sm text-gray-700 mb-2">Patient Mail Id</label>
+                <input 
+                  type="email"
+                  value={form.patientMail}
+                  onChange={(e) => setForm({ ...form, patientMail: e.target.value })}
+                  className="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                />
+              </div>
+              <div>
+                  <label className="block text-sm text-gray-700 mb-2">Doctor Name</label>
+                  <input 
+                    type="text"
+                    value={form.doctorName}
+                    onChange={(e) => setForm({ ...form, doctorName: e.target.value })}
+                    className="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                  />
+              </div>
+            </div>
             <div>
               <label className="block text-sm text-gray-700 mb-2">Advice/Instructions</label>
               <div className="flex items-center space-x-2">
@@ -763,7 +1090,9 @@ const handleClear = (setItems, key) => {
 
           {/* Save Button */}
           <div className="px-6 pb-6">
-            <button className="flex-shrink-0 px-4 py-3 text-sm font-medium ... bg-blue-500 hover:bg-blue-600 text-white px-6 py-2 rounded text-sm">
+            <button
+              onClick={handleSubmit}
+              className="flex-shrink-0 px-4 py-3 text-sm font-medium ... bg-blue-500 hover:bg-blue-600 text-white px-6 py-2 rounded text-sm">
               Save Data
             </button>
           </div>

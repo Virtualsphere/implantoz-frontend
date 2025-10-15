@@ -15,7 +15,7 @@ const Invoicing = () => {
       setLoading(true);
       try {
         const res = await fetch(
-          `/api/invoices?search=${search}&page=${page}&limit=${limit}`
+          `http://localhost:5000/api/invoices?search=${search}&page=${page}&limit=${limit}`
         );
         const data = await res.json();
 

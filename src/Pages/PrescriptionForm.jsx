@@ -37,14 +37,14 @@ const PrescriptionForm = () => {
   const [message, setMessage]= useState("");
 
   const API_ENDPOINTS = {
-    "Chief Complaint": "/api/prescriptions/chief-complaint",
-    "Examination": "/api/prescriptions/examination",
-    "Investigation / Finding": "/api/prescriptions/investigation",
-    "Diagnosis": "/api/prescriptions/diagnosis",
-    "Treatment Plan": "/api/prescriptions/treatment-plan",
+    "Chief Complaint": "/api/prescription-complaint",
+    "Examination": "/api/prescription-examination",
+    "Investigation / Finding": "/api/prescription-investigation",
+    "Diagnosis": "/api/prescription-diagnosis",
+    "Treatment Plan": "/api/prescription-treatment-plan",
     "Procedure": "/api/prescriptions/procedure",
     "Medication": "/api/prescriptions/medication",
-    "Advice Instructions": "/api/prescriptions/advice-instructions",
+    "Advice Instructions": "/api/prescription/advice-instruction",
   }
 
   const handleSubmit= async(e)=>{
@@ -62,12 +62,18 @@ const PrescriptionForm = () => {
       teethSpecification: form.teethSpecification,
     };
 
+    let basePayloadWithoutTheet= {
+      doctorName: form.doctorName,
+      patientMail: form.patientMail,
+      patientName: form.patientName
+    }
+
     // Pick only relevant part of the form for this tab
     let payload = {}
     switch (activeTab) {
       case "Chief Complaint":
         payload = {
-          ...basePayload,
+          ...basePayloadWithoutTheet,
           chiefComplaint: form.chiefComplaint,
         }
         break
@@ -93,7 +99,7 @@ const PrescriptionForm = () => {
         break
 
       case "Medication":
-        payload = { ...basePayload, medication: form.medication }
+        payload = { ...basePayloadWithoutTheet, medication: form.medication }
         break
 
       case "Advice Instructions":
@@ -104,7 +110,7 @@ const PrescriptionForm = () => {
         break
     }
 
-    const res = await fetch(endpoint, {
+    const res = await fetch(`http://localhost:5000${endpoint}`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload),
@@ -155,68 +161,6 @@ const handleClear = (setItems, key) => {
   setForm((prev) => ({ ...prev, [key]: [] }))
 }
 
-  const PatientNameField= ({ form, setForm })=>{
-    return(
-      <div>
-          <label className="block text-sm text-gray-700 mb-2">Patient Name</label>
-          <input 
-            type="text"
-            value={form.patientName}
-            onChange={(e) => setForm({ ...form, patientName: e.target.value })}
-            className="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-1 focus:ring-blue-500"
-          />
-      </div>
-    )
-  }
-
-  const PatientMailIdField= ({ form, setForm })=>{
-      return(
-        <div>
-          <label className="block text-sm text-gray-700 mb-2">Patient Mail Id</label>
-          <input 
-            type="email"
-            value={form.patientMail}
-            onChange={(e) => setForm({ ...form, patientMail: e.target.value })}
-            className="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-1 focus:ring-blue-500"
-          />
-        </div>
-      )
-  }
-
-  const DoctorNameField= ({ form, setForm })=>{
-    return(
-      <div>
-          <label className="block text-sm text-gray-700 mb-2">Doctor Name</label>
-          <input 
-            type="text"
-            value={form.doctorName}
-            onChange={(e) => setForm({ ...form, doctorName: e.target.value })}
-            className="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-1 focus:ring-blue-500"
-          />
-      </div>
-    )
-  }
-
-  const TeethPatientField = ({ form, setForm })=>{
-    return(
-      <div>
-          <label className="block text-sm text-gray-700 mb-2">Teeth Specification</label>
-          <div className="flex items-center space-x-2 relative">
-            <img src={ToothIcon} alt="tooth" 
-              className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400"
-            />
-            <input
-              type="text"
-              value={form.teethSpecification}
-              onChange={(e) => setForm({ ...form, teethSpecification: e.target.value })}
-              className="w-full pl-10 border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-1 focus:ring-blue-500"
-            />
-          </div>
-      </div>
-    )
-  }
-
-
   const renderTabContent = () => {
     switch (activeTab) {
       case 'Chief Complaint':
@@ -255,6 +199,8 @@ const handleClear = (setItems, key) => {
               <label className="block text-sm text-gray-700 mb-4">Chief Complaint</label>
               <textarea 
                 rows={6}
+                value={form.chiefComplaint}
+                onChange={(e)=> setForm({...form, chiefComplaint: e.target.value})}
                 className="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-1 focus:ring-blue-500"
               />
             </div>

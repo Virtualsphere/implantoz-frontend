@@ -23,7 +23,7 @@ const InvoiceForm = () => {
   const [form, setForm]= useState({
     patientName: "",
     patientMobile: "",
-    patientEmail: "",
+    patientMail: "",
     doctorName: "",
     invoiceDate: "",
     dueDate: "",
@@ -37,21 +37,30 @@ const InvoiceForm = () => {
     setForm({ ...form, [name]: value });
   }
 
-  const handleSubmit= async()=>{
+  const handleSubmit = async () => {
     try {
-      const payload= {
-        ...form,
-        items
-      }
-      const res= await axios.post('http://localhost:5000/api/invoices', payload)
-      if(res.data.success){
-        alert('Ivoice saved successfully!')
+      const totalAmount = items.reduce((sum, item) => sum + (Number(item.price) || 0), 0);
+
+      const payload = { ...form, total: totalAmount, items };
+
+      const res = await fetch("http://localhost:5000/api/create-invoice", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+
+      const result = await res.json();
+
+      if (result.success) {
+        alert('Invoice saved successfully!');
+      } else {
+        alert(result.message || 'Failed to save invoice.');
       }
     } catch (error) {
-      console.error(err);
+      console.error(error);
       alert('Error saving invoice.');
     }
-  }
+  };
 
   return (
     <div className="bg-gray-300 min-h-screen">
@@ -80,6 +89,7 @@ const InvoiceForm = () => {
                 <label className="block text-sm text-gray-700 mb-2">Patient Name</label>
                 <input 
                   type="text"
+                  name="patientName"
                   value={form.patientName}
                   onChange={handleInputChange}
                   className="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-1 focus:ring-blue-500"
@@ -89,6 +99,7 @@ const InvoiceForm = () => {
                 <label className="block text-sm text-gray-700 mb-2">Patient Mobile No</label>
                 <input 
                   type="text"
+                  name="patientMobile"
                   value={form.patientMobile}
                   onChange={handleInputChange}
                   className="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-1 focus:ring-blue-500"
@@ -98,7 +109,8 @@ const InvoiceForm = () => {
                 <label className="block text-sm text-gray-700 mb-2">Patient Mail Id</label>
                 <input 
                   type="email"
-                  value={form.patientEmail}
+                  name="patientMail"
+                  value={form.patientMail}
                   onChange={handleInputChange}
                   className="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-1 focus:ring-blue-500"
                 />
@@ -111,6 +123,7 @@ const InvoiceForm = () => {
                 <label className="block text-sm text-gray-700 mb-2">Doctor Name</label>
                 <input 
                   type="text"
+                  name="doctorName"
                   value={form.doctorName}
                   onChange={handleInputChange}
                   className="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-1 focus:ring-blue-500"
@@ -120,27 +133,21 @@ const InvoiceForm = () => {
                 <label className="block text-sm text-gray-700 mb-2">Invoice Date</label>
                 <div className="relative">
                   <input 
-                    type="text"
+                    type="date"
+                    name="invoiceDate"
                     value={form.invoiceDate}
                     onChange={handleInputChange}
                     defaultValue="15-08-2024"
                     className="w-full border border-gray-300 rounded px-3 py-2 pr-10 focus:outline-none focus:ring-1 focus:ring-blue-500"
                   />
-                  <div className="absolute inset-y-0 right-0 pr-3 flex items-center">
-                    <svg className="h-4 w-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
-                      <line x1="16" y1="2" x2="16" y2="6"></line>
-                      <line x1="8" y1="2" x2="8" y2="6"></line>
-                      <line x1="3" y1="10" x2="21" y2="10"></line>
-                    </svg>
-                  </div>
                 </div>
               </div>
               <div>
                 <label className="block text-sm text-gray-700 mb-2">Due Date</label>
                 <div className="relative">
                   <input 
-                    type="text"
+                    type="date"
+                    name="dueDate"
                     value={form.dueDate}
                     onChange={handleInputChange}
                     defaultValue="15-08-2024"
@@ -164,6 +171,7 @@ const InvoiceForm = () => {
                 <label className="block text-sm text-gray-700 mb-2">Payment Method</label>
                 <input 
                   type="text"
+                  name="paymentMethod"
                   value={form.paymentMethod}
                   onChange={handleInputChange}
                   className="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-1 focus:ring-blue-500"
@@ -173,6 +181,7 @@ const InvoiceForm = () => {
                 <label className="block text-sm text-gray-700 mb-2">Payment Status</label>
                 <input 
                   type="text"
+                  name="paymentStatus"
                   value={form.paymentStatus}
                   onChange={handleInputChange}
                   className="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-1 focus:ring-blue-500"
@@ -182,6 +191,7 @@ const InvoiceForm = () => {
                 <label className="block text-sm text-gray-700 mb-2">Invoice Status</label>
                 <input 
                   type="text"
+                  name="invoiceStatus"
                   value={form.invoiceStatus}
                   onChange={handleInputChange}
                   className="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-1 focus:ring-blue-500"
@@ -254,23 +264,25 @@ const InvoiceForm = () => {
                           onChange={(e) => handleItemChange(index, 'price', e.target.value)}
                           className="w-full border-0 focus:outline-none focus:ring-0 pr-16"
                         />
-                        <div className="absolute right-2 top-2 flex space-x-1">
-                          <button
-                            onClick={addItem}
-                            className="bg-yellow-500 hover:bg-yellow-600 text-white px-2 py-1 rounded text-xs"
-                          >
-                            Add Item
-                          </button>
-                          <button
-                            onClick={() => deleteItem(index)}
-                            className="bg-red-500 hover:bg-red-600 text-white px-2 py-1 rounded text-xs"
-                          >
-                            Delete Item
-                          </button>
-                        </div>
                       </td>
                     </tr>
                   ))}
+                  <tr>
+                    <td colSpan={6} className="px-4 py-3 text-right">
+                      <button
+                        onClick={addItem}
+                        className="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded text-sm mr-2"
+                      >
+                        Add Item
+                      </button>
+                      <button
+                        onClick={() => deleteItem(items.length - 1)}
+                        className="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded text-sm"
+                      >
+                        Delete Last Item
+                      </button>
+                    </td>
+                  </tr>
                 </tbody>
               </table>
               

@@ -34,19 +34,19 @@ const Signup = () => {
     <div className="flex h-screen">
       {/* Left Side Form */}
       <div className="flex flex-1 items-center justify-center bg-white">
-        <div className="w-full max-w-md px-6">
+        <div className="w-full max-w-md p-6 border border-blue-400 rounded-md shadow-md">
           {/* Logo */}
-          <div className="flex items-center mb-6">
+          <div className="flex flex-col items-center mb-6">
             <img
               src={Logo}
               alt="logo"
-              className="w-10 mr-2"
+              className="w-12 mb-2"
             />
           </div>
 
           {/* Heading */}
-          <h1 className="text-2xl font-bold mb-1">Create an account</h1>
-          <p className="text-gray-600 text-sm mb-6">
+          <h1 className="text-2xl font-bold mb-1 text-center">Create an account</h1>
+          <p className="text-gray-600 text-sm mb-6 text-center">
             Start your 30-day free trial.
           </p>
 

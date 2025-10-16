@@ -1,104 +1,92 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import Logo from "../assets/logo.png";
 import Pic from "../assets/Pic.png";
+import { useSearchParams } from "react-router-dom";
+
 const SetPass = () => {
-  const [form, setForm]= useState({email:"", newPassword:""});
-   const [message, setMessage]= useState("");
-    const handleSubmit= async(e)=>{
-      e.preventDefault();
-      try {
-        const res= fetch(`http://103.118.16.129:5005/auth/reset-password/${email}`,
-          {
-            method: "POST",
-            headers: { "Content-Type" : "application/json" },
-            body: JSON.stringify(form)
-          }
-        )
-        const data= await res.json();
-        setMessage(data.message);
-      } catch (error) {
-        console.error(err);
-        setMessage("Something went wrong!");
-      }
+  const [form, setForm] = useState({ email: "", newPassword: "", confirmPassword: "" });
+  const [message, setMessage] = useState("");
+  const [searchParams] = useSearchParams();
+
+  useEffect(() => {
+    const emailFromURL = searchParams.get("email");
+    if (emailFromURL) {
+      setForm((prev) => ({ ...prev, email: emailFromURL }));
     }
+  }, []);
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+
+    if (form.newPassword !== form.confirmPassword) {
+      setMessage("Passwords do not match.");
+      return;
+    }
+
+    try {
+      const res = await fetch(`http://103.118.16.129:5005/auth/reset-password?email=${form.email}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ newPassword: form.newPassword })
+      });
+
+      const data = await res.json();
+      setMessage(data.message || "Password reset successful!");
+    } catch (error) {
+      console.error(error);
+      setMessage("Something went wrong!");
+    }
+  };
+
   return (
     <div className="flex h-screen">
       {/* Left Side Image */}
       <div className="hidden md:flex flex-1">
-        <img
-          src={Pic}
-          alt="Doctors"
-          className="w-full h-full object-cover"
-        />
+        <img src={Pic} alt="Doctors" className="w-full h-full object-cover" />
       </div>
 
       {/* Right Side Form */}
       <div className="flex flex-1 items-center justify-center bg-white">
         <div className="w-full max-w-md px-6">
-          {/* Logo */}
           <div className="flex flex-col items-center mb-8">
-            <img
-              src={Logo}
-              alt="logo"
-              className="w-12 mb-2"
-            />
-            
+            <img src={Logo} alt="logo" className="w-12 mb-2" />
           </div>
 
-          {/* Icon */}
-          <div className="flex justify-center mb-4">
-            <div className="bg-purple-100 p-3 rounded-full">
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                className="w-6 h-6 text-purple-600"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M12 11c0-1.104-.896-2-2-2s-2 .896-2 2 .896 2 2 2 2-.896 2-2zM4.93 4.93a10 10 0 0114.14 0M9.17 9.17a6 6 0 018.49 8.49M12 20h.01"
-                />
-              </svg>
-            </div>
-          </div>
-
-          {/* Heading */}
-          <h1 className="text-2xl font-bold text-center mb-2">
-            Forgot password?
-          </h1>
+          <h1 className="text-2xl font-bold text-center mb-2">Reset your password</h1>
           <p className="text-gray-600 text-sm text-center mb-6">
-            No worries, we’ll send you reset instructions.
+            Set your new password below.
           </p>
 
-          {/* Form */}
-          <form>
-            <label className="block text-sm font-semibold mb-1">Enter New Password*</label>
+          <form onSubmit={handleSubmit}>
+            <label className="block text-sm font-semibold mb-1">New Password*</label>
             <input
-              type="email"
-              placeholder="Enter your Password"
+              type="password"
+              value={form.newPassword}
+              onChange={(e) => setForm({ ...form, newPassword: e.target.value })}
+              placeholder="Enter new password"
               className="w-full p-2 border border-gray-300 rounded-md mb-4"
+              required
             />
 
             <label className="block text-sm font-semibold mb-1">Confirm Password*</label>
             <input
-              type="email"
-              placeholder="Enter your Password"
+              type="password"
+              value={form.confirmPassword}
+              onChange={(e) => setForm({ ...form, confirmPassword: e.target.value })}
+              placeholder="Confirm password"
               className="w-full p-2 border border-gray-300 rounded-md mb-4"
+              required
             />
 
-            <button className="w-full bg-blue-900 text-white py-2 rounded-md font-semibold hover:bg-blue-800">
-              Reset password
+            <button type="submit" className="w-full bg-blue-900 text-white py-2 rounded-md font-semibold hover:bg-blue-800">
+              Set New Password
             </button>
           </form>
 
-          {/* Back to login */}
+          {message && <p className="text-center text-green-600 mt-4">{message}</p>}
+
           <p className="text-center text-sm mt-6">
-            <a href="/" className="text-blue-600 font-medium">
-              ← Log in
-            </a>
+            <a href="/" className="text-blue-600 font-medium">← Back to Login</a>
           </p>
         </div>
       </div>

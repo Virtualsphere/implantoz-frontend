@@ -1,8 +1,37 @@
-import React from "react";
+import React, { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import Logo from '../assets/logo.png';
 import Pic from '../assets/Pic.png'
 
 const Signin = () => {
+  const [form, setForm]= useState({email:"", password:""});
+  const [message, setMessage]= useState("");
+  const navigate= useNavigate();
+  const handleSubmit= async(e)=>{
+    e.preventDefault();
+    try {
+      const res= await fetch("http://103.118.16.129:5009/auth/login",
+        {
+          method: "POST",
+          headers: { "Content-Type" : "application/json" },
+          body: JSON.stringify(form)
+        }
+      )
+      const data= await res.json();
+      if (res.ok) {
+        localStorage.setItem("token", data.token);
+        setMessage(data.message || "Login successful!");
+        setTimeout(() => {
+          navigate("/dashboard");
+        }, 1000);
+      } else {
+        setMessage(data.message || "Invalid credentials!");
+      }
+    } catch (error) {
+      console.error(error);
+      setMessage("Something went wrong!");
+    }
+  }
   return (
     <div className="flex h-screen">
       {/* Left Side */}
@@ -26,12 +55,14 @@ const Signin = () => {
           </p>
 
           {/* Form */}
-          <form>
+          <form onSubmit={handleSubmit}>
             <label className="block text-sm font-semibold mb-1">Email*</label>
             <input
               type="email"
               placeholder="Enter your e-mail"
               className="w-full p-2 border border-gray-300 rounded-md mb-4"
+              value={form.email}
+              onChange={(e)=>setForm({ ...form, email: e.target.value })}
             />
 
             <label className="block text-sm font-semibold mb-1">Password*</label>
@@ -39,14 +70,17 @@ const Signin = () => {
               type="password"
               placeholder="Enter your password"
               className="w-full p-2 border border-gray-300 rounded-md"
+              value={form.password}
+              onChange={(e)=>setForm({ ...form, password: e.target.value })}
             />
             <p className="text-xs text-gray-500 mt-1 mb-4">
               Must be at least 8 characters.
             </p>
 
-            <button className="w-full bg-blue-900 text-white py-2 rounded-md font-semibold hover:bg-blue-800">
+            <button type="submit" className="w-full bg-blue-900 text-white py-2 rounded-md font-semibold hover:bg-blue-800">
               Log in
             </button>
+            {message && <p>{message}</p>}
           </form>
 
           {/* Divider */}
@@ -83,8 +117,15 @@ const Signin = () => {
           {/* Signup Redirect */}
           <p className="text-center text-sm mt-6">
             I don’t have an account?{" "}
-            <a href="#" className="text-blue-600 font-medium">
-              Log in
+            <a href="/signup" className="text-blue-600 font-medium">
+              Sign Up
+            </a>
+          </p>
+
+          <p className="text-center text-sm mt-6">
+            don't remeber password?{" "}
+            <a href="/reset-password" className="text-blue-600 font-medium">
+              Forget Password
             </a>
           </p>
         </div>

@@ -1,18 +1,208 @@
 import React, { useState } from "react";
+import { ToastContainer, toast } from "react-toastify";
+import "react-toastify/dist/ReactToastify.css";
+import { useNavigate } from "react-router-dom";
 
 const PatientForm = () => {
+  const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState("basic");
+  const [form, setForm]= useState({
+    firstName: "",
+    lastName: "",
+    emailId: "",
+    mobile: "",
+    dob: "",
+    bloodGroup: "",
+    gender: "",
+    address1: "",
+    address2: "",
+    city: "",
+    country: "",
+    zip: "",
+    medicalHistory: [],
+    otherHistory: ""
+  })
+  const [message, setMessage]= useState("");
+  const [patientId, setPatientId] = useState(null);
+  const handleCheckboxChange = (condition) => {
+    setForm((prev) => {
+      if (prev.medicalHistory.includes(condition)) {
+        return {
+          ...prev,
+          medicalHistory: prev.medicalHistory.filter((c) => c !== condition)
+        };
+      } else {
+        return {
+          ...prev,
+          medicalHistory: [...prev.medicalHistory, condition]
+        };
+      }
+    });
+  };
+
+  const generatePatientPDF = async (patientId) => {
+      if (!patientId) {
+        toast.error("Invoice ID missing");
+        return;
+      }
+  
+      try {
+        const response = await fetch(`http://103.118.16.129:5009/api/generate-patient-pdf/${patientId}`, {
+          method: 'GET',
+          headers: { /* any auth headers if needed */ }
+        });
+        if (!response.ok) {
+          throw new Error('Failed to generate invoice PDF');
+        }
+        const blob = await response.blob();
+        const url = window.URL.createObjectURL(blob);
+        window.open(url);
+      } catch (err) {
+        console.error(err);
+        toast.error('Failed to fetch invoice PDF');
+      }
+    };
+
+const handleBasicSubmit = async () => {
+  try {
+    const res = await fetch("http://103.118.16.129:5009/api/create-patient", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        firstName: form.firstName,
+        lastName: form.lastName,
+        email: form.emailId,
+        mobile: form.mobile,
+        dob: form.dob,
+        bloodGroup: form.bloodGroup,
+        gender: form.gender,
+      }),
+    });
+    const data = await res.json();
+    if (res.ok && data.patientId) {
+      // ✅ Save the patientId for the next steps
+      setPatientId(data.patientId);
+
+      // ✅ Clear basic info fields only
+      setForm((prev) => ({
+        ...prev,
+        firstName: "",
+        lastName: "",
+        emailId: "",
+        mobile: "",
+        dob: "",
+        bloodGroup: "",
+        gender: "",
+      }));
+      // ✅ Move automatically to "address" tab
+      setActiveTab("address");
+
+      // ✅ Success message
+      toast.success("Patient details saved successfully!");
+    } else {
+      setMessage(data.message || "Failed to save patient details.");
+    }
+  } catch (error) {
+    console.error(error);
+    setMessage("Failed to save patient details.");
+  }
+};
+
+const handleAddressSubmit = async () => {
+  if (!patientId) {
+    setMessage("Please save basic info first.");
+    return;
+  }
+  try {
+    const res = await fetch(`http://103.118.16.129:5009/api/add-address/${patientId}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        addressLine1: form.address1,
+        addressLine2: form.address2,
+        city: form.city,
+        country: form.country,
+        postalCode: form.zip,
+      }),
+    });
+    const data = await res.json();
+    if (res.ok) {
+      // ✅ Clear only address fields
+      setForm((prev) => ({
+        ...prev,
+        address1: "",
+        address2: "",
+        city: "",
+        country: "",
+        zip: "",
+      }));
+
+      // ✅ Move to Medical tab
+      setActiveTab("medical");
+
+      toast.success("Address saved successfully!");
+    } else {
+      setMessage(data.message || "Failed to save address.");
+    }
+  } catch (error) {
+    console.error(error);
+    setMessage("Failed to save address.");
+  }
+};
+
+const handleMedicalSubmit = async () => {
+  if (!patientId) {
+    setMessage("Please save basic info first.");
+    return;
+  }
+  try {
+    const res = await fetch(`http://103.118.16.129:5009/api/add-medical-history/${patientId}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        disease_name: form.medicalHistory,
+        history: form.otherHistory,
+      }),
+    });
+    const data = await res.json();
+    if (res.ok) {
+      // ✅ Clear only medical history fields
+      setForm((prev) => ({
+        ...prev,
+        medicalHistory: [],
+        otherHistory: "",
+      }));
+
+      // ✅ Optionally go back to Basic Info or show completion message
+      setActiveTab("basic");
+      toast.success("Medical history saved successfully! Patient record complete.");
+    } else {
+      setMessage(data.message || "Failed to save medical history.");
+    }
+  } catch (error) {
+    console.error(error);
+    setMessage("Failed to save medical history.");
+  }
+};
+
 
   return (
-    <div className="min-h-screen bg-gray-200 p-4">
-      <div className="max-w-5xl mx-auto bg-white rounded-lg shadow-lg overflow-hidden">
+    <div className="min-h-screen bg-gray-300 p-4">
         {/* Header */}
-        <div className="bg-gray-100 px-6 py-4 border-b">
-          <h1 className="text-2xl font-semibold text-gray-800 mb-1">Patients</h1>
-          <p className="text-sm text-gray-600">
-            <span className="text-blue-600">Home</span> › <span className="text-blue-600">Patient</span> › Add patient
-          </p>
-        </div>
+      <div className="bg-gray-300 px-6 py-4">
+          <div className="flex items-center space-x-2">
+            <h1 className="text-3xl font-normal text-black">Patient</h1>
+            <div className="flex items-center text-sm text-blue-600">
+              <span onClick={() => navigate("/Patient")} className="hover:underline cursor-pointer">Home</span>
+              <span className="mx-1">›</span>
+              <span>Patient</span>
+              <span className="mx-1">›</span>
+              <span>Add Paitent</span>
+            </div>
+          </div>
+      </div>
+
+      <div className="max-w-5xl mx-auto bg-white rounded-lg shadow-lg overflow-hidden">
 
         {/* Tabs */}
         <div className="bg-white">
@@ -49,6 +239,8 @@ const PatientForm = () => {
                   </label>
                   <input
                     type="text"
+                    value={form.firstName}
+                    onChange={(e)=> setForm({ ...form, firstName: e.target.value})}
                     className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
                   />
                 </div>
@@ -58,6 +250,8 @@ const PatientForm = () => {
                   </label>
                   <input
                     type="text"
+                    value={form.lastName}
+                    onChange={(e)=> setForm({ ...form, lastName: e.target.value})}
                     className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
                   />
                 </div>
@@ -67,6 +261,8 @@ const PatientForm = () => {
                   </label>
                   <input
                     type="email"
+                    value={form.emailId}
+                    onChange={(e)=> setForm({ ...form, emailId: e.target.value})}
                     className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
                   />
                 </div>
@@ -79,6 +275,8 @@ const PatientForm = () => {
                   </label>
                   <input
                     type="text"
+                    value={form.mobile}
+                    onChange={(e)=> setForm({ ...form, mobile: e.target.value})}
                     className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
                   />
                 </div>
@@ -88,6 +286,8 @@ const PatientForm = () => {
                   </label>
                   <input
                     type="date"
+                    value={form.dob}
+                    onChange={(e)=> setForm({ ...form, dob: e.target.value})}
                     className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
                   />
                 </div>
@@ -100,6 +300,8 @@ const PatientForm = () => {
                   </label>
                   <input
                     type="text"
+                    value={form.bloodGroup}
+                    onChange={(e)=> setForm({ ...form, bloodGroup: e.target.value})}
                     className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
                   />
                 </div>
@@ -109,6 +311,8 @@ const PatientForm = () => {
                   </label>
                   <input
                     type="text"
+                    value={form.gender}
+                    onChange={(e)=> setForm({ ...form, gender: e.target.value})}
                     className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
                   />
                 </div>
@@ -126,6 +330,8 @@ const PatientForm = () => {
                   </label>
                   <input
                     type="text"
+                    value={form.address1}
+                    onChange={(e)=> setForm({ ...form, address1: e.target.value})}
                     className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
                   />
                 </div>
@@ -135,6 +341,8 @@ const PatientForm = () => {
                   </label>
                   <input
                     type="text"
+                    value={form.address2}
+                    onChange={(e)=> setForm({ ...form, address2: e.target.value})}
                     className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
                   />
                 </div>
@@ -147,6 +355,8 @@ const PatientForm = () => {
                   </label>
                   <input
                     type="text"
+                    value={form.city}
+                    onChange={(e)=> setForm({ ...form, city: e.target.value})}
                     className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
                   />
                 </div>
@@ -159,6 +369,8 @@ const PatientForm = () => {
                   </label>
                   <input
                     type="text"
+                    value={form.country}
+                    onChange={(e)=> setForm({ ...form, country: e.target.value})}
                     className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
                   />
                 </div>
@@ -171,6 +383,8 @@ const PatientForm = () => {
                   </label>
                   <input
                     type="text"
+                    value={form.zip}
+                    onChange={(e)=> setForm({ ...form, zip: e.target.value})}
                     className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
                   />
                 </div>
@@ -200,6 +414,8 @@ const PatientForm = () => {
                   <label key={condition} className="flex items-center space-x-2 text-sm">
                     <input
                       type="checkbox"
+                      checked={form.medicalHistory.includes(condition)}
+                      onChange={() => handleCheckboxChange(condition)}
                       className="h-4 w-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
                     />
                     <span className="text-gray-700">{condition}</span>
@@ -213,6 +429,10 @@ const PatientForm = () => {
                 </label>
                 <textarea
                   rows={4}
+                  value={form.otherHistory}
+                  onChange={(e) =>
+                    setForm({ ...form, otherHistory: e.target.value })
+                  }
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 resize-none bg-gray-50"
                   placeholder=""
                 />
@@ -222,12 +442,59 @@ const PatientForm = () => {
 
           {/* Save Button */}
           <div className="mt-8 text-center">
-            <button className="bg-blue-600 text-white px-6 py-2 rounded-md hover:bg-blue-700 transition-colors text-sm font-medium">
-              + Save Data
-            </button>
+            {activeTab === "basic" && (
+              <button
+                onClick={handleBasicSubmit}
+                className="bg-blue-600 text-white px-6 py-2 rounded-md hover:bg-blue-700 transition-colors text-sm font-medium"
+              >
+                Save Basic Info
+              </button>
+            )}
+
+            {activeTab === "address" && (
+              <button
+                onClick={handleAddressSubmit}
+                className="bg-green-600 text-white px-6 py-2 rounded-md hover:bg-green-700 transition-colors text-sm font-medium"
+              >
+                Save Address
+              </button>
+            )}
+
+            {activeTab === "medical" && (
+              <div className="flex justify-center gap-4">
+                <button
+                  onClick={handleMedicalSubmit}
+                  className="bg-purple-600 text-white px-6 py-2 rounded-md hover:bg-purple-700 transition-colors text-sm font-medium"
+                >
+                  Save Medical History
+                </button>
+                
+                <button
+                  onClick={() => generatePatientPDF(patientId)}
+                  disabled={!patientId}
+                  className={`${
+                    patientId ? "bg-gray-700 hover:bg-gray-800" : "bg-gray-400 cursor-not-allowed"
+                  } text-white px-6 py-2 rounded-md transition-colors text-sm font-medium`}
+                >
+                  Download PDF
+                </button>
+              </div>
+            )}
           </div>
         </div>
       </div>
+      <ToastContainer
+      position="top-right"
+      autoClose={3000}
+      hideProgressBar={false}
+      newestOnTop={false}
+      closeOnClick
+      rtl={false}
+      pauseOnFocusLoss
+      draggable
+      pauseOnHover
+      theme="colored"
+    />
     </div>
   );
 };

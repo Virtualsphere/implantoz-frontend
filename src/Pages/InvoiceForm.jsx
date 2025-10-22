@@ -1,21 +1,144 @@
 import React, { useState } from 'react'
+import axios from 'axios'
+import { ToastContainer, toast } from "react-toastify";
+import "react-toastify/dist/ReactToastify.css";
+import { useNavigate } from "react-router-dom";
 
 const InvoiceForm = () => {
-  const [items, setItems] = useState([{ itemName: '', description: '', quantity: '', unitCost: '', tax: '', price: '' }])
+  const navigate = useNavigate();
+  const [items, setItems] = useState([{ itemName: '', quantity: '', unitCost: '', discount: '', price: '' }])
 
   const addItem = () => {
-    setItems([...items, { itemName: '', description: '', quantity: '', unitCost: '', tax: '', price: '' }])
+    setItems([...items, { itemName: '', quantity: '', unitCost: '', discount: '', price: '' }])
   }
 
   const deleteItem = (index) => {
     const newItems = items.filter((_, i) => i !== index)
     setItems(newItems)
   }
+  const [lastInvoiceId, setLastInvoiceId] = useState(null);
 
   const handleItemChange = (index, field, value) => {
     const newItems = [...items]
     newItems[index][field] = value
+
+    // Calculate price automatically if quantity, unitCost or discount changes
+    const quantity = Number(newItems[index].quantity) || 0
+    const unitCost = Number(newItems[index].unitCost) || 0
+    const discount = Number(newItems[index].discount) || 0
+    newItems[index].price = (quantity * unitCost - discount).toFixed(2)
+
     setItems(newItems)
+  }
+
+
+  const [form, setForm]= useState({
+    patientName: "",
+    patientMobile: "",
+    patientMail: "",
+    doctorName: "",
+    invoiceDate: "",
+    dueDate: "",
+    prescriptionId: "",
+    paymentStatus: "due",
+    invoiceStatus: ""
+  })
+
+  const generateInvoicePDF = async (invoiceId) => {
+    if (!invoiceId) {
+      toast.error("Invoice ID missing");
+      return;
+    }
+
+    try {
+      const response = await fetch(`http://103.118.16.129:5009/api/generate-invoice-pdf/${invoiceId}`, {
+        method: 'GET',
+        headers: { /* any auth headers if needed */ }
+      });
+      if (!response.ok) {
+        throw new Error('Failed to generate invoice PDF');
+      }
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      window.open(url);
+    } catch (err) {
+      console.error(err);
+      toast.error('Failed to fetch invoice PDF');
+    }
+  };
+
+
+  const fetchPrescriptionDetails = async (prescriptionId) => {
+    try {
+      if (!prescriptionId) return;
+
+      const res = await axios.get(`http://103.118.16.129:5009/api/prescription/${prescriptionId}`);
+      const data = res.data;
+
+      setForm(prev => ({
+        ...prev,
+        patientName: data.fullName || '',
+        patientMobile: data.mobile || '',
+        patientMail: data.email || '',
+        doctorName: data.doctorName || '',
+        prescriptionId: prescriptionId
+      }));
+
+      setItems(data.items || []);
+    } catch (error) {
+      console.error("Failed to fetch prescription details:", error);
+      alert('Invalid Prescription Id or server error.');
+    }
+  };
+
+  const handleInputChange = (e)=>{
+    const { name, value } = e.target;
+    setForm(prev => ({ ...prev, [name]: value }));
+  }
+
+  const handleSubmit = async () => {
+    try {
+      const totalAmount = items.reduce((sum, item) => sum + (Number(item.price) || 0), 0);
+
+      const payload = { ...form, total: totalAmount, items };
+
+      const res = await fetch("http://103.118.16.129:5009/api/create-invoice", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+
+      const result = await res.json();
+
+      if (result.success) {
+        toast.success('Invoice saved successfully!');
+        setLastInvoiceId(result.invoiceId);
+      } else {
+        alert(result.message || 'Failed to save invoice.');
+      }
+    } catch (error) {
+      console.error(error);
+      alert('Error saving invoice.');
+    }
+  };
+
+  const subTotal = items.reduce(
+    (sum, item) => sum + ((Number(item.quantity) || 0) * (Number(item.unitCost) || 0)),
+    0
+  )
+  const totalDiscount = items.reduce((sum, item) => sum + (Number(item.discount) || 0), 0)
+  const totalAmount = items.reduce((sum, item) => sum + (Number(item.price) || 0), 0)
+
+  // Set Paid and Due based on paymentStatus
+  let paidAmount = 0
+  let dueAmount = totalAmount
+
+  if (form.paymentStatus.toLowerCase() === "paid") {
+    paidAmount = totalAmount
+    dueAmount = 0
+  } else if (form.paymentStatus.toLowerCase() === "due") {
+    paidAmount = 0
+    dueAmount = totalAmount
   }
 
   return (
@@ -25,7 +148,7 @@ const InvoiceForm = () => {
         <div className="flex items-center space-x-2">
           <h1 className="text-3xl font-normal text-black">Invoices</h1>
           <div className="flex items-center text-sm text-blue-600">
-            <span className="hover:underline cursor-pointer">Home</span>
+            <span onClick={() => navigate("/invoicing")} className="hover:underline cursor-pointer">Home</span>
             <span className="mx-1">›</span>
             <span>Invoices</span>
             <span className="mx-1">›</span>
@@ -40,36 +163,48 @@ const InvoiceForm = () => {
           {/* Form Fields */}
           <div className="space-y-6">
             {/* First Row */}
-            <div className="grid grid-cols-3 gap-6">
+            <div className="grid md:grid-cols-3 gap-6">
               <div>
                 <label className="block text-sm text-gray-700 mb-2">Patient Name</label>
                 <input 
-                  type="text" 
+                  type="text"
+                  name="patientName"
+                  value={form.patientName}
+                  onChange={handleInputChange}
                   className="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-1 focus:ring-blue-500"
                 />
               </div>
               <div>
                 <label className="block text-sm text-gray-700 mb-2">Patient Mobile No</label>
                 <input 
-                  type="text" 
+                  type="text"
+                  name="patientMobile"
+                  value={form.patientMobile}
+                  onChange={handleInputChange}
                   className="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-1 focus:ring-blue-500"
                 />
               </div>
               <div>
                 <label className="block text-sm text-gray-700 mb-2">Patient Mail Id</label>
                 <input 
-                  type="email" 
+                  type="email"
+                  name="patientMail"
+                  value={form.patientMail}
+                  onChange={handleInputChange}
                   className="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-1 focus:ring-blue-500"
                 />
               </div>
             </div>
 
             {/* Second Row */}
-            <div className="grid grid-cols-3 gap-6">
+            <div className="grid md:grid-cols-3 gap-6">
               <div>
                 <label className="block text-sm text-gray-700 mb-2">Doctor Name</label>
                 <input 
-                  type="text" 
+                  type="text"
+                  name="doctorName"
+                  value={form.doctorName}
+                  onChange={handleInputChange}
                   className="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-1 focus:ring-blue-500"
                 />
               </div>
@@ -77,60 +212,63 @@ const InvoiceForm = () => {
                 <label className="block text-sm text-gray-700 mb-2">Invoice Date</label>
                 <div className="relative">
                   <input 
-                    type="text" 
+                    type="date"
+                    name="invoiceDate"
+                    value={form.invoiceDate}
+                    onChange={handleInputChange}
                     defaultValue="15-08-2024"
                     className="w-full border border-gray-300 rounded px-3 py-2 pr-10 focus:outline-none focus:ring-1 focus:ring-blue-500"
                   />
-                  <div className="absolute inset-y-0 right-0 pr-3 flex items-center">
-                    <svg className="h-4 w-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
-                      <line x1="16" y1="2" x2="16" y2="6"></line>
-                      <line x1="8" y1="2" x2="8" y2="6"></line>
-                      <line x1="3" y1="10" x2="21" y2="10"></line>
-                    </svg>
-                  </div>
                 </div>
               </div>
               <div>
                 <label className="block text-sm text-gray-700 mb-2">Due Date</label>
                 <div className="relative">
                   <input 
-                    type="text" 
+                    type="date"
+                    name="dueDate"
+                    value={form.dueDate}
+                    onChange={handleInputChange}
                     defaultValue="15-08-2024"
                     className="w-full border border-gray-300 rounded px-3 py-2 pr-10 focus:outline-none focus:ring-1 focus:ring-blue-500"
                   />
-                  <div className="absolute inset-y-0 right-0 pr-3 flex items-center">
-                    <svg className="h-4 w-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
-                      <line x1="16" y1="2" x2="16" y2="6"></line>
-                      <line x1="8" y1="2" x2="8" y2="6"></line>
-                      <line x1="3" y1="10" x2="21" y2="10"></line>
-                    </svg>
-                  </div>
                 </div>
               </div>
             </div>
 
             {/* Third Row */}
-            <div className="grid grid-cols-3 gap-6">
+            <div className="grid md:grid-cols-3 gap-6">
               <div>
-                <label className="block text-sm text-gray-700 mb-2">Payment Method</label>
+                <label className="block text-sm text-gray-700 mb-2">Consultation Id</label>
                 <input 
-                  type="text" 
+                  type="text"
+                  name="prescriptionId"
+                  value={form.prescriptionId}
+                  onChange={(e) => {
+                    handleInputChange(e)
+                    fetchPrescriptionDetails(e.target.value)
+                  }}
                   className="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-1 focus:ring-blue-500"
                 />
               </div>
               <div>
                 <label className="block text-sm text-gray-700 mb-2">Payment Status</label>
-                <input 
-                  type="text" 
-                  className="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-1 focus:ring-blue-500"
-                />
+                <select 
+                  name="paymentStatus"
+                  value={form.paymentStatus}
+                  onChange={handleInputChange}
+                  className='w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-1 focus:ring-blue-500'>
+                  <option value="paid">paid</option>
+                  <option value="due">due</option>
+                </select>
               </div>
               <div>
                 <label className="block text-sm text-gray-700 mb-2">Invoice Status</label>
                 <input 
-                  type="text" 
+                  type="text"
+                  name="invoiceStatus"
+                  value={form.invoiceStatus}
+                  onChange={handleInputChange}
                   className="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-1 focus:ring-blue-500"
                 />
               </div>
@@ -144,10 +282,9 @@ const InvoiceForm = () => {
                 <thead className="bg-gray-50">
                   <tr>
                     <th className="px-4 py-3 text-left text-sm font-medium text-gray-700 border-r border-gray-300">Item Name</th>
-                    <th className="px-4 py-3 text-left text-sm font-medium text-gray-700 border-r border-gray-300">Item Description</th>
                     <th className="px-4 py-3 text-left text-sm font-medium text-gray-700 border-r border-gray-300">Quantity</th>
                     <th className="px-4 py-3 text-left text-sm font-medium text-gray-700 border-r border-gray-300">Unit Cost</th>
-                    <th className="px-4 py-3 text-left text-sm font-medium text-gray-700 border-r border-gray-300">Tax</th>
+                    <th className="px-4 py-3 text-left text-sm font-medium text-gray-700 border-r border-gray-300">Discount</th>
                     <th className="px-4 py-3 text-left text-sm font-medium text-gray-700">Price</th>
                   </tr>
                 </thead>
@@ -159,14 +296,6 @@ const InvoiceForm = () => {
                           type="text" 
                           value={item.itemName}
                           onChange={(e) => handleItemChange(index, 'itemName', e.target.value)}
-                          className="w-full border-0 focus:outline-none focus:ring-0"
-                        />
-                      </td>
-                      <td className="px-4 py-3 border-r border-gray-300">
-                        <input 
-                          type="text" 
-                          value={item.description}
-                          onChange={(e) => handleItemChange(index, 'description', e.target.value)}
                           className="w-full border-0 focus:outline-none focus:ring-0"
                         />
                       </td>
@@ -189,8 +318,8 @@ const InvoiceForm = () => {
                       <td className="px-4 py-3 border-r border-gray-300">
                         <input 
                           type="text" 
-                          value={item.tax}
-                          onChange={(e) => handleItemChange(index, 'tax', e.target.value)}
+                          value={item.discount}
+                          onChange={(e) => handleItemChange(index, 'discount', e.target.value)}
                           className="w-full border-0 focus:outline-none focus:ring-0"
                         />
                       </td>
@@ -201,23 +330,25 @@ const InvoiceForm = () => {
                           onChange={(e) => handleItemChange(index, 'price', e.target.value)}
                           className="w-full border-0 focus:outline-none focus:ring-0 pr-16"
                         />
-                        <div className="absolute right-2 top-2 flex space-x-1">
-                          <button
-                            onClick={addItem}
-                            className="bg-yellow-500 hover:bg-yellow-600 text-white px-2 py-1 rounded text-xs"
-                          >
-                            Add Item
-                          </button>
-                          <button
-                            onClick={() => deleteItem(index)}
-                            className="bg-red-500 hover:bg-red-600 text-white px-2 py-1 rounded text-xs"
-                          >
-                            Delete Item
-                          </button>
-                        </div>
                       </td>
                     </tr>
                   ))}
+                  <tr>
+                    <td colSpan={6} className="px-4 py-3 text-right">
+                      <button
+                        onClick={addItem}
+                        className="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded text-sm mr-2"
+                      >
+                        Add Item
+                      </button>
+                      <button
+                        onClick={() => deleteItem(items.length - 1)}
+                        className="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded text-sm"
+                      >
+                        Delete Last Item
+                      </button>
+                    </td>
+                  </tr>
                 </tbody>
               </table>
               
@@ -240,23 +371,23 @@ const InvoiceForm = () => {
               <div className="border border-gray-300 rounded">
                 <div className="p-3 border-b border-gray-200 flex justify-between">
                   <span className="text-sm text-gray-700">Sub Total</span>
-                  <span className="text-sm"></span>
+                  <span className="text-sm">{subTotal.toFixed(2)}</span>
                 </div>
                 <div className="p-3 border-b border-gray-200 flex justify-between">
-                  <span className="text-sm text-gray-700">Tax</span>
-                  <span className="text-sm"></span>
+                  <span className="text-sm text-gray-700">discount</span>
+                  <span className="text-sm">{totalDiscount.toFixed(2)}</span>
                 </div>
                 <div className="p-3 border-b border-gray-200 flex justify-between">
                   <span className="text-sm text-gray-700">Paid</span>
-                  <span className="text-sm"></span>
+                  <span className="text-sm">{paidAmount.toFixed(2)}</span>
                 </div>
                 <div className="p-3 border-b border-gray-200 flex justify-between">
                   <span className="text-sm text-gray-700 font-medium">Total</span>
-                  <span className="text-sm font-medium"></span>
+                  <span className="text-sm font-medium">{totalAmount.toFixed(2)}</span>
                 </div>
                 <div className="p-3 flex justify-between">
                   <span className="text-sm text-gray-700">Due</span>
-                  <span className="text-sm"></span>
+                  <span className="text-sm">{dueAmount.toFixed(2)}</span>
                 </div>
               </div>
             </div>
@@ -264,12 +395,33 @@ const InvoiceForm = () => {
 
           {/* Action Buttons */}
           <div className="mt-8 flex space-x-3">
-            <button className="bg-blue-500 hover:bg-blue-600 text-white px-6 py-2 rounded text-sm">
-              Save Data
-            </button>
-            <button className="bg-green-500 hover:bg-green-600 text-white px-6 py-2 rounded text-sm">
+            <button
+            onClick={()=>{
+              handleSubmit();
+              setForm({
+                patientName: '',
+                patientMobile: '',
+                patientMail: '',
+                doctorName: '',
+                invoiceDate: '',
+                dueDate: '',
+                prescriptionId: '',
+                paymentStatus: '',
+                invoiceStatus: ''
+              });
+              setItems([{ itemName: '', description: '', quantity: '', unitCost: '', discount: '', price: '' }]);
+            }}
+            className="bg-green-500 hover:bg-green-600 text-white px-6 py-2 rounded text-sm">
               Save & New
             </button>
+            {lastInvoiceId && (
+              <button
+                onClick={() => generateInvoicePDF(lastInvoiceId)}
+                className="bg-yellow-500 hover:bg-yellow-600 text-white px-6 py-2 rounded text-sm"
+              >
+                Generate Invoice PDF
+              </button>
+            )}
           </div>
         </div>
 
@@ -278,6 +430,18 @@ const InvoiceForm = () => {
           <p className="text-sm text-gray-600 italic">Powered By Virtualosphere Technologies Pvt Ltd</p>
         </div>
       </div>
+      <ToastContainer
+                position="top-right"
+                autoClose={3000}
+                hideProgressBar={false}
+                newestOnTop={false}
+                closeOnClick
+                rtl={false}
+                pauseOnFocusLoss
+                draggable
+                pauseOnHover
+                theme="colored"
+              />
     </div>
   )
 }

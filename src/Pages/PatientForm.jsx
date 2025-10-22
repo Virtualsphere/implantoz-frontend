@@ -1,6 +1,10 @@
 import React, { useState } from "react";
+import { ToastContainer, toast } from "react-toastify";
+import "react-toastify/dist/ReactToastify.css";
+import { useNavigate } from "react-router-dom";
 
 const PatientForm = () => {
+  const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState("basic");
   const [form, setForm]= useState({
     firstName: "",
@@ -36,9 +40,32 @@ const PatientForm = () => {
     });
   };
 
+  const generatePatientPDF = async (patientId) => {
+      if (!patientId) {
+        toast.error("Invoice ID missing");
+        return;
+      }
+  
+      try {
+        const response = await fetch(`http://103.118.16.129:5009/api/generate-patient-pdf/${patientId}`, {
+          method: 'GET',
+          headers: { /* any auth headers if needed */ }
+        });
+        if (!response.ok) {
+          throw new Error('Failed to generate invoice PDF');
+        }
+        const blob = await response.blob();
+        const url = window.URL.createObjectURL(blob);
+        window.open(url);
+      } catch (err) {
+        console.error(err);
+        toast.error('Failed to fetch invoice PDF');
+      }
+    };
+
 const handleBasicSubmit = async () => {
   try {
-    const res = await fetch("http://localhost:5000/api/create-patient", {
+    const res = await fetch("http://103.118.16.129:5009/api/create-patient", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -52,8 +79,29 @@ const handleBasicSubmit = async () => {
       }),
     });
     const data = await res.json();
-    setPatientId(data.patientId);
-    setMessage("Patient details saved successfully!");
+    if (res.ok && data.patientId) {
+      // ✅ Save the patientId for the next steps
+      setPatientId(data.patientId);
+
+      // ✅ Clear basic info fields only
+      setForm((prev) => ({
+        ...prev,
+        firstName: "",
+        lastName: "",
+        emailId: "",
+        mobile: "",
+        dob: "",
+        bloodGroup: "",
+        gender: "",
+      }));
+      // ✅ Move automatically to "address" tab
+      setActiveTab("address");
+
+      // ✅ Success message
+      toast.success("Patient details saved successfully!");
+    } else {
+      setMessage(data.message || "Failed to save patient details.");
+    }
   } catch (error) {
     console.error(error);
     setMessage("Failed to save patient details.");
@@ -66,7 +114,7 @@ const handleAddressSubmit = async () => {
     return;
   }
   try {
-    const res = await fetch(`http://localhost:5000/api/add-address/${patientId}`, {
+    const res = await fetch(`http://103.118.16.129:5009/api/add-address/${patientId}`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -78,7 +126,24 @@ const handleAddressSubmit = async () => {
       }),
     });
     const data = await res.json();
-    setMessage("Address saved successfully!");
+    if (res.ok) {
+      // ✅ Clear only address fields
+      setForm((prev) => ({
+        ...prev,
+        address1: "",
+        address2: "",
+        city: "",
+        country: "",
+        zip: "",
+      }));
+
+      // ✅ Move to Medical tab
+      setActiveTab("medical");
+
+      toast.success("Address saved successfully!");
+    } else {
+      setMessage(data.message || "Failed to save address.");
+    }
   } catch (error) {
     console.error(error);
     setMessage("Failed to save address.");
@@ -91,7 +156,7 @@ const handleMedicalSubmit = async () => {
     return;
   }
   try {
-    const res = await fetch(`http://localhost:5000/api/add-medical-history/${patientId}`, {
+    const res = await fetch(`http://103.118.16.129:5009/api/add-medical-history/${patientId}`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -100,7 +165,20 @@ const handleMedicalSubmit = async () => {
       }),
     });
     const data = await res.json();
-    setMessage("Medical history saved successfully!");
+    if (res.ok) {
+      // ✅ Clear only medical history fields
+      setForm((prev) => ({
+        ...prev,
+        medicalHistory: [],
+        otherHistory: "",
+      }));
+
+      // ✅ Optionally go back to Basic Info or show completion message
+      setActiveTab("basic");
+      toast.success("Medical history saved successfully! Patient record complete.");
+    } else {
+      setMessage(data.message || "Failed to save medical history.");
+    }
   } catch (error) {
     console.error(error);
     setMessage("Failed to save medical history.");
@@ -109,15 +187,22 @@ const handleMedicalSubmit = async () => {
 
 
   return (
-    <div className="min-h-screen bg-gray-200 p-4">
-      <div className="max-w-5xl mx-auto bg-white rounded-lg shadow-lg overflow-hidden">
+    <div className="min-h-screen bg-gray-300 p-4">
         {/* Header */}
-        <div className="bg-gray-100 px-6 py-4 border-b">
-          <h1 className="text-2xl font-semibold text-gray-800 mb-1">Patients</h1>
-          <p className="text-sm text-gray-600">
-            <span className="text-blue-600">Home</span> › <span className="text-blue-600">Patient</span> › Add patient
-          </p>
-        </div>
+      <div className="bg-gray-300 px-6 py-4">
+          <div className="flex items-center space-x-2">
+            <h1 className="text-3xl font-normal text-black">Patient</h1>
+            <div className="flex items-center text-sm text-blue-600">
+              <span onClick={() => navigate("/Patient")} className="hover:underline cursor-pointer">Home</span>
+              <span className="mx-1">›</span>
+              <span>Patient</span>
+              <span className="mx-1">›</span>
+              <span>Add Paitent</span>
+            </div>
+          </div>
+      </div>
+
+      <div className="max-w-5xl mx-auto bg-white rounded-lg shadow-lg overflow-hidden">
 
         {/* Tabs */}
         <div className="bg-white">
@@ -376,16 +461,40 @@ const handleMedicalSubmit = async () => {
             )}
 
             {activeTab === "medical" && (
-              <button
-                onClick={handleMedicalSubmit}
-                className="bg-purple-600 text-white px-6 py-2 rounded-md hover:bg-purple-700 transition-colors text-sm font-medium"
-              >
-                Save Medical History
-              </button>
+              <div className="flex justify-center gap-4">
+                <button
+                  onClick={handleMedicalSubmit}
+                  className="bg-purple-600 text-white px-6 py-2 rounded-md hover:bg-purple-700 transition-colors text-sm font-medium"
+                >
+                  Save Medical History
+                </button>
+                
+                <button
+                  onClick={() => generatePatientPDF(patientId)}
+                  disabled={!patientId}
+                  className={`${
+                    patientId ? "bg-gray-700 hover:bg-gray-800" : "bg-gray-400 cursor-not-allowed"
+                  } text-white px-6 py-2 rounded-md transition-colors text-sm font-medium`}
+                >
+                  Download PDF
+                </button>
+              </div>
             )}
           </div>
         </div>
       </div>
+      <ToastContainer
+      position="top-right"
+      autoClose={3000}
+      hideProgressBar={false}
+      newestOnTop={false}
+      closeOnClick
+      rtl={false}
+      pauseOnFocusLoss
+      draggable
+      pauseOnHover
+      theme="colored"
+    />
     </div>
   );
 };

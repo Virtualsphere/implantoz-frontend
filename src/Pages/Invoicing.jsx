@@ -10,12 +10,36 @@ const Invoicing = () => {
   const [page, setPage] = useState(1);
   const [pagination, setPagination] = useState({ totalRecords: 0, totalPages: 0 });
 
+
+   const generateInvoicePDF = async (invoiceId) => {
+      if (!invoiceId) {
+        toast.error("Invoice ID missing");
+        return;
+      }
+  
+      try {
+        const response = await fetch(`http://103.118.16.129:5009/api/generate-invoice-pdf/${invoiceId}`, {
+          method: 'GET',
+          headers: { /* any auth headers if needed */ }
+        });
+        if (!response.ok) {
+          throw new Error('Failed to generate invoice PDF');
+        }
+        const blob = await response.blob();
+        const url = window.URL.createObjectURL(blob);
+        window.open(url);
+      } catch (err) {
+        console.error(err);
+        toast.error('Failed to fetch invoice PDF');
+      }
+    };
+
   useEffect(() => {
     const fetchInvoices = async () => {
       setLoading(true);
       try {
         const res = await fetch(
-          `http://localhost:5000/api/invoices?search=${search}&page=${page}&limit=${limit}`
+          `http://103.118.16.129:5009/api/invoices?search=${search}&page=${page}&limit=${limit}`
         );
         const data = await res.json();
 
@@ -43,7 +67,7 @@ const Invoicing = () => {
         <div className="flex items-center space-x-2">
           <h1 className="text-3xl font-normal text-black">Invoices</h1>
           <div className="flex items-center text-sm text-blue-600">
-            <span className="hover:underline cursor-pointer">Home</span>
+            <span onClick={() => navigate("/invoicing")} className="hover:underline cursor-pointer">Home</span>
             <span className="mx-1">›</span>
             <span>Invoices</span>
           </div>
@@ -124,7 +148,8 @@ const Invoicing = () => {
                   <th className="px-6 py-4 text-left text-sm font-medium text-gray-900 border-r border-gray-300">Invoice Date</th>
                   <th className="px-6 py-4 text-left text-sm font-medium text-gray-900 border-r border-gray-300">Created Date</th>
                   <th className="px-6 py-4 text-left text-sm font-medium text-gray-900 border-r border-gray-300">Due Date</th>
-                  <th className="px-6 py-4 text-left text-sm font-medium text-gray-900">Status</th>
+                  <th className="px-6 py-4 text-left text-sm font-medium text-gray-900 border-r border-gray-300">Status</th>
+                  <th className="px-6 py-4 text-left text-sm font-medium text-gray-900"></th>
                 </tr>
               </thead>
               <tbody className="bg-white">
@@ -145,11 +170,19 @@ const Invoicing = () => {
                     <tr key={p.id} className="border-b border-gray-200 hover:bg-gray-50">
                       <td className="px-6 py-4 text-sm text-gray-700">{(page - 1) * limit + i + 1}</td>
                       <td className="px-6 py-4 text-sm text-gray-700">{p.patient_name}</td>
-                      <td className="px-6 py-4 text-sm text-gray-700">${p.amount.toFixed(2)}</td>
+                      <td className="px-6 py-4 text-sm text-gray-700">{p.amount.toFixed(2)}rs</td>
                       <td className="px-6 py-4 text-sm text-gray-700">{p.invoice_date}</td>
                       <td className="px-6 py-4 text-sm text-gray-700">{p.created_at}</td>
                       <td className="px-6 py-4 text-sm text-gray-700">{p.due_date}</td>
                       <td className="px-6 py-4 text-sm text-gray-700 capitalize">{p.status}</td>
+                      <td className="px-6 py-4 text-sm text-gray-700 capitalize">
+                        <button
+                          onClick={() => generateInvoicePDF(p.invoice_id)}
+                          className="bg-yellow-500 hover:bg-yellow-600 text-white px-6 py-2 rounded text-sm"
+                        >
+                          Generate Invoice PDF
+                        </button>
+                      </td>
                     </tr>
                   ))
                 )}

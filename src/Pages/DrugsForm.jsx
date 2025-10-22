@@ -1,109 +1,87 @@
-import React, { useState, useEffect } from "react";
+// Updated styled Drug Form matching Invoice UI
+import React, { useState } from "react";
+import { ToastContainer, toast } from "react-toastify";
+import "react-toastify/dist/ReactToastify.css";
 
-export default function DrugsForm() {
-  const [drugs, setDrugs] = useState([]);
+const DrugsForm= ()=> {
   const [form, setForm] = useState({
     drugName: "",
-    generic: "",
-    frequency: "",
-    duration: "",
-    instruction: ""
+    companyName: "",
+    unit: "",
+    unitPackaging: "",
+    category: "",
+    pts: "",
+    ptr: ""
   });
 
-  useEffect(() => {
-    fetchDrugs();
-  }, []);
-
-  const fetchDrugs = async () => {
-    const res = await fetch("http://yourapi.com/api/drugs");
-    const data = await res.json();
-    setDrugs(data);
+  const handleChange = (field, value) => {
+    setForm({ ...form, [field]: value });
   };
 
   const handleSubmit = async () => {
-    await fetch("http://yourapi.com/api/drugs", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(form)
-    });
-    setForm({ drugName: "", generic: "", frequency: "", duration: "", instruction: "" });
-    fetchDrugs();
+    try {
+      const res = await fetch("http://103.118.16.129:5009/api/create-drug", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(form)
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setForm({ drugName: "", companyName: "", unit: "", unitPackaging: "", category: "", pts: "", ptr: "" });
+        toast.success("Drug added successfully!");
+      } else {
+        toast.error(data.message || "Failed to save drug.");
+      }
+    } catch (error) {
+      toast.error("Failed to save drug.");
+    }
   };
 
   return (
-    <div className="p-6 bg-white shadow rounded">
-      <h2 className="text-xl font-bold mb-4">Add Drug</h2>
-
-      {/* Form */}
-      <div className="grid grid-cols-2 gap-4 mb-4">
-        <input
-          type="text"
-          placeholder="Drug Name"
-          value={form.drugName}
-          onChange={(e) => setForm({ ...form, drugName: e.target.value })}
-          className="border p-2 rounded"
-        />
-        <input
-          type="text"
-          placeholder="Generic"
-          value={form.generic}
-          onChange={(e) => setForm({ ...form, generic: e.target.value })}
-          className="border p-2 rounded"
-        />
-        <input
-          type="text"
-          placeholder="Frequency"
-          value={form.frequency}
-          onChange={(e) => setForm({ ...form, frequency: e.target.value })}
-          className="border p-2 rounded"
-        />
-        <input
-          type="text"
-          placeholder="Duration"
-          value={form.duration}
-          onChange={(e) => setForm({ ...form, duration: e.target.value })}
-          className="border p-2 rounded"
-        />
-        <input
-          type="text"
-          placeholder="Instruction"
-          value={form.instruction}
-          onChange={(e) => setForm({ ...form, instruction: e.target.value })}
-          className="border p-2 rounded col-span-2"
-        />
+    <div className="bg-gray-300 min-h-screen">
+      <div className="bg-gray-300 px-6 py-4">
+        <div className="flex items-center space-x-2">
+          <h1 className="text-3xl font-normal text-black">Drug</h1>
+          <div className="flex items-center text-sm text-blue-600">
+            <span onClick={() => navigate("/prescription")} className="hover:underline cursor-pointer">Home</span>
+            <span className="mx-1">›</span>
+            <span>Drug</span>
+            <span className="mx-1">›</span>
+            <span>Add Drug</span>
+          </div>
+        </div>
       </div>
 
-      <button
-        onClick={handleSubmit}
-        className="bg-blue-500 text-white px-4 py-2 rounded"
-      >
-        Save Drug
-      </button>
+      <div className="px-6 pb-6">
+        <div className="bg-white rounded-lg shadow-lg p-6">
+          <div className="grid grid-cols-3 gap-6">
+            {Object.entries({ DrugName: "drugName", Company: "companyName", Unit: "unit", Packaging: "unitPackaging", Category: "category", PTS: "pts", PTR: "ptr" }).map(([label, key], i) => (
+              <div key={i}>
+                <label className="block text-sm text-gray-700 mb-2">{label}</label>
+                <input
+                  type="text"
+                  value={form[key]}
+                  onChange={(e) => handleChange(key, e.target.value)}
+                  className="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                  placeholder={`Enter ${label}`}
+                />
+              </div>
+            ))}
+          </div>
 
-      {/* Table */}
-      <h3 className="text-lg font-semibold mt-6 mb-2">Drugs List</h3>
-      <table className="w-full border text-sm">
-        <thead className="bg-gray-100">
-          <tr>
-            <th className="border px-2 py-1">Drug</th>
-            <th className="border px-2 py-1">Generic</th>
-            <th className="border px-2 py-1">Frequency</th>
-            <th className="border px-2 py-1">Duration</th>
-            <th className="border px-2 py-1">Instruction</th>
-          </tr>
-        </thead>
-        <tbody>
-          {drugs.map((drug, i) => (
-            <tr key={i}>
-              <td className="border px-2 py-1">{drug.drugName}</td>
-              <td className="border px-2 py-1">{drug.generic}</td>
-              <td className="border px-2 py-1">{drug.frequency}</td>
-              <td className="border px-2 py-1">{drug.duration}</td>
-              <td className="border px-2 py-1">{drug.instruction}</td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
+          <div className="mt-8 flex space-x-3">
+            <button
+              onClick={handleSubmit}
+              className="bg-blue-500 hover:bg-blue-600 text-white px-6 py-2 rounded text-sm"
+            >
+              Save Drug
+            </button>
+          </div>
+        </div>
+      </div>
+      <ToastContainer />
     </div>
   );
 }
+
+export default DrugsForm;

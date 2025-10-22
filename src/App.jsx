@@ -16,6 +16,7 @@ import InvoicingForm from "./Pages/InvoiceForm";
 import PrescriptionForm from "./Pages/PrescriptionForm";
 import DrugsForm from "./Pages/DrugsForm";
 import SetPass from "./Pages/SetPass";
+import AppointmentForm from "./Pages/AppointmentForm";
 const App = () => {
   return (
     <Router>
@@ -31,6 +32,7 @@ const App = () => {
           <Route path="invoicing/form" element={<InvoicingForm />} />
           <Route path="prescription/form" element={<PrescriptionForm />} />
           <Route path="drugs/form" element={<DrugsForm />} />
+          <Route path="appointment/form" element={<AppointmentForm />} />
         </Route>
         <Route index element={<Signin />} />
         <Route path="signup" element={<Signup />} />

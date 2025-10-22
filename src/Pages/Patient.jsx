@@ -11,12 +11,36 @@ const Patient = () => {
   const [totalPatients, setTotalPatients] = useState(0);
   const [search, setSearch] = useState("");
 
+
+  const generatePatientPDF = async (patientId) => {
+        if (!patientId) {
+          toast.error("Invoice ID missing");
+          return;
+        }
+    
+        try {
+          const response = await fetch(`http://103.118.16.129:5009/api/generate-patient-pdf/${patientId}`, {
+            method: 'GET',
+            headers: { /* any auth headers if needed */ }
+          });
+          if (!response.ok) {
+            throw new Error('Failed to generate invoice PDF');
+          }
+          const blob = await response.blob();
+          const url = window.URL.createObjectURL(blob);
+          window.open(url);
+      } catch (err) {
+        console.error(err);
+        toast.error('Failed to fetch invoice PDF');
+      }
+  };
+
   useEffect(() => {
     const fetchPatients = async () => {
       try {
         setLoading(true);
         const res = await fetch(
-          `http://localhost:5000/api/getPatients?page=${page}&limit=${limit}&search=${encodeURIComponent(search)}`
+          `http://103.118.16.129:5009/api/getPatients?page=${page}&limit=${limit}&search=${encodeURIComponent(search)}`
         );
         const data = await res.json();
 
@@ -90,6 +114,15 @@ const Patient = () => {
             </div>
 
             <div className="flex items-center space-x-3">
+              <div className="flex items-center space-x-2 text-sm text-gray-700">
+                  <span>12-07-2025</span>
+                  <span>—</span>
+                  <span>12-08-2025</span>
+                </div>
+                <button className="flex items-center space-x-1 border border-gray-300 bg-white hover:bg-gray-50 px-3 py-1 rounded text-sm text-gray-700">
+                  <span>⬇</span>
+                  <span>Export</span>
+                </button>
               <button
                 onClick={() => navigate("/patient/form")}
                 className="flex items-center space-x-1 bg-blue-500 hover:bg-blue-600 text-white px-3 py-1 rounded text-sm"
@@ -127,6 +160,7 @@ const Patient = () => {
                   <th className="px-6 py-3 text-left text-sm font-medium text-gray-900 border-r border-gray-300">Date of Birth</th>
                   <th className="px-6 py-3 text-left text-sm font-medium text-gray-900 border-r border-gray-300">Blood Group</th>
                   <th className="px-6 py-3 text-left text-sm font-medium text-gray-900 border-r border-gray-300">Created On</th>
+                  <th className="px-6 py-3 text-left text-sm font-medium text-gray-900 border-r border-gray-300"></th>
                 </tr>
               </thead>
               <tbody className="bg-white">
@@ -151,6 +185,16 @@ const Patient = () => {
                       <td className="px-6 py-3 text-sm text-gray-700">{p.dob}</td>
                       <td className="px-6 py-3 text-sm text-gray-700">{p.blood_group}</td>
                       <td className="px-6 py-3 text-sm text-gray-700">{p.created_at}</td>
+                      <td>
+                        <button
+                          onClick={() => generatePatientPDF(p.patient_id)}
+                          className={`${
+                            p.patient_id ? "bg-gray-700 hover:bg-gray-800" : "bg-gray-400 cursor-not-allowed"
+                          } text-white px-6 py-2 rounded-md transition-colors text-sm font-medium`}
+                        >
+                          Download PDF
+                        </button>
+                      </td>
                     </tr>
                   ))
                 )}

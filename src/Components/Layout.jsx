@@ -24,6 +24,8 @@ const Layout = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [patients, setPatients] = useState([]);
   const [showResults, setShowResults] = useState(false);
+  const [showUserBox, setShowUserBox] = useState(false);
+  const userName = localStorage.getItem("name") || "User";
 
   const menuItems = [
     { name: "Dashboard", path: "/dashboard", icon: <Home className="h-5 w-5" /> },
@@ -33,6 +35,33 @@ const Layout = () => {
     { name: "Invoicing", path: "/invoicing", icon: <CreditCard className="h-5 w-5" /> },
     { name: "Drugs", path: "/drugs", icon: <Pill className="h-5 w-5" /> },
   ];
+
+  const handleLogout = () => {
+    localStorage.removeItem("token");
+    localStorage.removeItem("name");
+    navigate("/"); // redirect to login
+  };
+
+
+  useEffect(() => {
+    const token = localStorage.getItem("token");
+    if (token) {
+      fetch("http://localhost:5000/auth/users", {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      })
+        .then((res) => res.json())
+        .then((data) => {
+          if (data.success) {
+            localStorage.setItem("name", data.user.name);
+          } else {
+            handleLogout();  // Invalid token, logout
+          }
+        })
+        .catch(() => handleLogout());
+    }
+  }, []);
 
   // 🧠 Fetch patient data when searchQuery changes
   useEffect(() => {
@@ -155,7 +184,24 @@ const Layout = () => {
           <div className="flex items-center space-x-4 text-gray-700">
             <Home className="h-5 w-5 cursor-pointer" onClick={() => navigate("/")} />
             <Settings className="h-5 w-5 cursor-pointer" />
-            <User className="h-5 w-5 cursor-pointer" />
+            <div className="relative">
+              <User
+                className="h-5 w-5 cursor-pointer"
+                onClick={() => setShowUserBox((prev) => !prev)}
+              />
+
+              {showUserBox && (
+                <div className="absolute right-0 mt-2 w-48 bg-white shadow-lg rounded-md border border-gray-200 z-50 p-4">
+                  <p className="text-sm font-semibold mb-2">{userName}</p>
+                  <button
+                    onClick={handleLogout}
+                    className="w-full bg-red-600 text-white py-1 rounded-md text-sm hover:bg-red-700"
+                  >
+                    Logout
+                  </button>
+                </div>
+              )}
+            </div>
           </div>
         </div>
 

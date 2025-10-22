@@ -2,23 +2,59 @@ import React, { useEffect, useState } from 'react';
 import { useNavigate } from "react-router-dom";
 
 const Drugs = () => {
-  const navigate = useNavigate();
-    const [prescriptions, setPrescription]= useState([]);
-    const [loading, setLoading]= useState(true);
-    useEffect(()=>{
-      const fetchPrescription= async()=>{
-        try {
-          const res= await fetch("");
-          const data= await res.json();
-          setPrescription(data);
-        } catch (error) {
-          console.error("Error Featching prescription:", error);
-        } finally{
-          setLoading(false);
+    const navigate = useNavigate();
+    const [drugs, setDrugs] = useState([]);
+    const [loading, setLoading] = useState(false);
+    const [search, setSearch] = useState("");
+    const [limit, setLimit] = useState(10);
+    const [page, setPage] = useState(1);
+    const [pagination, setPagination] = useState({ totalRecords: 0, totalPages: 0 });
+
+    const generateDrugPDF = async (drugId) => {
+        if (!drugId) {
+          toast.error("Drug ID missing");
+          return;
         }
-      } 
-    fetchPrescription();
-    }, []);
+    
+        try {
+          const response = await fetch(`http://103.118.16.129:5009/api/generate-drug-pdf/${drugId}`, {
+            method: 'GET',
+            headers: { /* any auth headers if needed */ }
+          });
+          if (!response.ok) {
+            throw new Error('Failed to generate invoice PDF');
+          }
+          const blob = await response.blob();
+          const url = window.URL.createObjectURL(blob);
+          window.open(url);
+        } catch (err) {
+          console.error(err);
+          toast.error('Failed to fetch invoice PDF');
+        }
+    };
+    useEffect(() => {
+        const fetchDrugs = async () => {
+          setLoading(true);
+          try {
+            const res = await fetch(
+              `http://103.118.16.129:5009/api/get-drug?search=${search}&page=${page}&limit=${limit}`
+            );
+            const data = await res.json();
+            if (data.success) {
+              setDrugs(data.data);
+              setPagination(data.pagination);
+            } else {
+              setDrugs([]);
+              setPagination({ totalRecords: 0, totalPages: 0 });
+            }
+          } catch (err) {
+            console.error("Error fetching invoices:", err);
+          } finally {
+            setLoading(false);
+          }
+        };
+          fetchDrugs();
+      }, [search, page, limit]);
     return (
       <div className="bg-gray-300 min-h-screen">
         {/* Header Section */}
@@ -41,7 +77,13 @@ const Drugs = () => {
               <div className="flex justify-between items-center">
                 <div className="flex items-center space-x-2">
                   <span className="text-sm text-gray-700">Show</span>
-                  <select className="border border-gray-300 rounded px-2 py-1 text-sm bg-white">
+                  <select className="border border-gray-300 rounded px-2 py-1 text-sm bg-white"
+                  value={limit}
+                  onChange={(e) => {
+                    setLimit(Number(e.target.value));
+                    setPage(1);
+                  }}
+                  >
                     <option>10</option>
                     <option>25</option>
                     <option>50</option>
@@ -74,6 +116,11 @@ const Drugs = () => {
                   <span className="text-sm text-gray-700">Search:</span>
                   <input 
                     type="text" 
+                    value={search}
+                    onChange={(e) => {
+                      setSearch(e.target.value);
+                      setPage(1);
+                    }}
                     className="border border-gray-300 rounded px-3 py-1 text-sm w-48 focus:outline-none focus:ring-1 focus:ring-blue-500"
                   />
                 </div>
@@ -102,23 +149,33 @@ const Drugs = () => {
                         Loading...
                       </td>
                     </tr>
-                  ) : prescriptions.length === 0 ? (
+                  ) : drugs.length === 0 ? (
                     <tr>
                       <td colSpan="8" className="px-6 py-16 text-center text-gray-500 text-sm">
                         No Data is available at the moment
                       </td>
                     </tr>
                   ) : (
-                    prescriptions.map((d, i) => (
+                    drugs.map((d, i) => (
                       <tr key={d.id} className="border-b border-gray-200">
                         <td className="px-6 py-4 text-sm text-gray-700">{i + 1}</td>
-                        <td className="px-6 py-4 text-sm text-gray-700">{d.medicine}</td>
-                        <td className="px-6 py-4 text-sm text-gray-700">{d.companyName}</td>
+                        <td className="px-6 py-4 text-sm text-gray-700">{d.drug_name}</td>
+                        <td className="px-6 py-4 text-sm text-gray-700">{d.company_name}</td>
                         <td className="px-6 py-4 text-sm text-gray-700">{d.unit}</td>
-                        <td className="px-6 py-4 text-sm text-gray-700">{d.unitPackaging}</td>
+                        <td className="px-6 py-4 text-sm text-gray-700">{d.unit_packaging}</td>
                         <td className="px-6 py-4 text-sm text-gray-700">{d.category}</td>
                         <td className="px-6 py-4 text-sm text-gray-700">{d.pts}</td>
                         <td className="px-6 py-4 text-sm text-gray-700">{d.ptr}</td>
+                        <td>
+                        <button
+                          onClick={() => generateDrugPDF(d.drug_id)}
+                          className={`${
+                            d.drug_id ? "bg-gray-700 hover:bg-gray-800" : "bg-gray-400 cursor-not-allowed"
+                          } text-white px-6 py-2 rounded-md transition-colors text-sm font-medium`}
+                        >
+                          Download PDF
+                        </button>
+                      </td>
                       </tr>
                     ))
                   )}
@@ -127,9 +184,27 @@ const Drugs = () => {
             </div>
             
             {/* Footer */}
-            <div className="px-6 py-4 border-t border-gray-200 bg-white rounded-b-lg">
-              <div className="text-sm text-gray-700">
-                Showing 0 to 0 of 0 entries
+            <div className="px-6 py-4 border-t border-gray-200 bg-white flex justify-between items-center text-sm text-gray-700">
+              <span>
+              Showing {(page - 1) * limit + 1} to{" "}
+              {Math.min(page * limit, pagination.totalRecords)} of{" "}
+              {pagination.totalRecords} entries
+              </span>
+              <div className="space-x-2">
+                <button
+                  disabled={page === 1}
+                  onClick={() => setPage((prev) => Math.max(prev - 1, 1))}
+                  className="px-3 py-1 border border-gray-300 rounded disabled:opacity-50"
+                >
+                  Prev
+                </button>
+                <button
+                  disabled={page === pagination.totalPages}
+                  onClick={() => setPage((prev) => Math.min(prev + 1, pagination.totalPages))}
+                  className="px-3 py-1 border border-gray-300 rounded disabled:opacity-50"
+                >
+                  Next
+                </button>
               </div>
             </div>
           </div>

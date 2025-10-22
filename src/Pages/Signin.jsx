@@ -10,7 +10,7 @@ const Signin = () => {
   const handleSubmit= async(e)=>{
     e.preventDefault();
     try {
-      const res= await fetch("http://localhost:5000/auth/login",
+      const res= await fetch("http://103.118.16.129:5009/auth/login",
         {
           method: "POST",
           headers: { "Content-Type" : "application/json" },
@@ -119,6 +119,13 @@ const Signin = () => {
             I don’t have an account?{" "}
             <a href="/signup" className="text-blue-600 font-medium">
               Sign Up
+            </a>
+          </p>
+
+          <p className="text-center text-sm mt-6">
+            don't remeber password?{" "}
+            <a href="/reset-password" className="text-blue-600 font-medium">
+              Forget Password
             </a>
           </p>
         </div>

@@ -1,24 +1,76 @@
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useState, useRef  } from 'react'
 import { useNavigate } from "react-router-dom";
+import { useReactToPrint } from "react-to-print";
+import html2canvas from "html2canvas";
+import jsPDF from "jspdf";
 
 const Prescription = () => {
+  const pdfRef= useRef();
   const navigate = useNavigate();
-  const [prescriptions, setPrescription]= useState([]);
-  const [loading, setLoading]= useState(true);
-  useEffect(()=>{
-    const fetchPrescription= async()=>{
+  const [prescriptions, setPrescriptions] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [search, setSearch] = useState("");
+  const [limit, setLimit] = useState(10);
+  const [page, setPage] = useState(1);
+  const [pagination, setPagination] = useState({ totalRecords: 0, totalPages: 0 });
+
+  const [pdfData, setPdfData] = useState(null);
+  const [showPdf, setShowPdf] = useState(false);
+
+  const handlePrint = useReactToPrint({
+    content: () => pdfRef.current,
+  });
+
+  const generatePDF = async (prescriptionId) => {
+    try {
+      const res = await fetch(`http://103.118.16.129:5009/api/generate-prescription-pdf/${prescriptionId}`, {
+        method: 'GET'
+      });
+
+      if (!res.ok) {
+        const text = await res.text();
+        throw new Error(text || 'Failed to generate PDF');
+      }
+
+      const blob = await res.blob();
+      const url = window.URL.createObjectURL(blob);
+
+      // open in new tab (preview)
+      window.open(url, '_blank');
+
+      // optional: revoke object URL after some delay
+      setTimeout(() => window.URL.revokeObjectURL(url), 60 * 1000);
+    } catch (err) {
+      console.error('Error fetching PDF:', err);
+      alert('Failed to generate preview PDF');
+    }
+  };
+
+  useEffect(() => {
+    const fetchPrescriptions = async () => {
+      setLoading(true);
       try {
-        const res= await fetch("");
-        const data= await res.json();
-        setPrescription(data);
+        const res = await fetch(
+          `http://103.118.16.129:5009/api/getPrescription?search=${search}&page=${page}&limit=${limit}`
+        );
+        const data = await res.json();
+
+        if (data.success) {
+          setPrescriptions(data.data);
+          setPagination(data.pagination);
+        } else {
+          setPrescriptions([]);
+          setPagination({ totalRecords: 0, totalPages: 0 });
+        }
       } catch (error) {
-        console.error("Error Featching prescription:", error);
-      } finally{
+        console.error("Error fetching prescriptions:", error);
+      } finally {
         setLoading(false);
       }
-    } 
-  fetchPrescription();
-  }, []);
+    };
+
+    fetchPrescriptions();
+  }, [search, page, limit]);
   return (
     <div className="bg-gray-300 min-h-screen">
       {/* Header Section */}
@@ -41,7 +93,13 @@ const Prescription = () => {
             <div className="flex justify-between items-center">
               <div className="flex items-center space-x-2">
                 <span className="text-sm text-gray-700">Show</span>
-                <select className="border border-gray-300 rounded px-2 py-1 text-sm bg-white">
+                <select 
+                className="border border-gray-300 rounded px-2 py-1 text-sm bg-white"
+                value={limit}
+                onChange={(e) => {
+                  setLimit(Number(e.target.value));
+                  setPage(1);
+                }}>
                   <option>10</option>
                   <option>25</option>
                   <option>50</option>
@@ -73,7 +131,13 @@ const Prescription = () => {
               <div className="flex items-center space-x-2">
                 <span className="text-sm text-gray-700">Search:</span>
                 <input 
-                  type="text" 
+                  type="text"
+                  value={search}
+                  onChange={(e) => {
+                    setSearch(e.target.value);
+                    setPage(1);
+                  }}
+                  placeholder="Search by patient or doctor..."
                   className="border border-gray-300 rounded px-3 py-1 text-sm w-48 focus:outline-none focus:ring-1 focus:ring-blue-500"
                 />
               </div>
@@ -88,7 +152,8 @@ const Prescription = () => {
                   <th className="px-6 py-4 text-left text-sm font-medium text-gray-900 bg-gray-50 border-r border-gray-300">#</th>
                   <th className="px-6 py-4 text-left text-sm font-medium text-gray-900 bg-gray-50 border-r border-gray-300">Patient Name</th>
                   <th className="px-6 py-4 text-left text-sm font-medium text-gray-900 bg-gray-50 border-r border-gray-300">Doctor Name</th>
-                  <th className="px-6 py-4 text-left text-sm font-medium text-gray-900 bg-gray-50">Consultation Id</th>
+                  <th className="px-6 py-4 text-left text-sm font-medium text-gray-900 bg-gray-50 border-r border-gray-300">Consultation Id</th>
+                  <th className="px-6 py-4 text-left text-sm font-medium text-gray-900 bg-gray-50"></th>
                 </tr>
               </thead>
               <tbody className="bg-white">
@@ -107,10 +172,15 @@ const Prescription = () => {
                 ) : (
                   prescriptions.map((p, i) => (
                     <tr key={p.id} className="border-b border-gray-200">
-                      <td className="px-6 py-4 text-sm text-gray-700">{i + 1}</td>
+                      <td className="px-6 py-4 text-sm text-gray-700">{(page - 1) * limit + i + 1}</td>
                       <td className="px-6 py-4 text-sm text-gray-700">{p.patientName}</td>
                       <td className="px-6 py-4 text-sm text-gray-700">{p.doctorName}</td>
-                      <td className="px-6 py-4 text-sm text-gray-700">{p.consultationId}</td>
+                      <td className="px-6 py-4 text-sm text-gray-700">{p.prescription_id}</td>
+                      <td className="px-6 py-4 text-sm text-gray-700"><button onClick={() => generatePDF(p.prescription_id)}
+                        className="px-6 py-2 text-sm font-medium bg-green-500 hover:bg-green-600 text-white rounded">
+                        Dowload
+                        </button>
+                      </td>
                     </tr>
                   ))
                 )}
@@ -119,9 +189,27 @@ const Prescription = () => {
           </div>
           
           {/* Footer */}
-          <div className="px-6 py-4 border-t border-gray-200 bg-white rounded-b-lg">
-            <div className="text-sm text-gray-700">
-              Showing 0 to 0 of 0 entries
+          <div className="px-6 py-4 border-t border-gray-200 bg-white flex justify-between items-center text-sm text-gray-700">
+            <span>
+              Showing {(page - 1) * limit + 1} to{" "}
+              {Math.min(page * limit, pagination.totalRecords)} of{" "}
+              {pagination.totalRecords} entries
+            </span>
+            <div className="space-x-2">
+              <button
+                disabled={page === 1}
+                onClick={() => setPage((prev) => Math.max(prev - 1, 1))}
+                className="px-3 py-1 border border-gray-300 rounded disabled:opacity-50"
+              >
+                Prev
+              </button>
+              <button
+                disabled={page === pagination.totalPages}
+                onClick={() => setPage((prev) => Math.min(prev + 1, pagination.totalPages))}
+                className="px-3 py-1 border border-gray-300 rounded disabled:opacity-50"
+              >
+                Next
+              </button>
             </div>
           </div>
         </div>

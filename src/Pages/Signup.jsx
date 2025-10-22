@@ -9,7 +9,7 @@ const Signup = () => {
   const handleSubmit= async(e)=>{
     e.preventDefault();
     try {
-      const res= await fetch("http://localhost:5000/auth/register", {
+      const res= await fetch("http://103.118.16.129:5009/auth/register", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(form)

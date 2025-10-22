@@ -1,8 +1,12 @@
-import React, { useState } from "react";
+import React, { useState, useEffect  } from "react";
 import { Calendar } from "lucide-react";
 import ToothIcon from "../assets/tooth.png";
+import { ToastContainer, toast } from "react-toastify";
+import "react-toastify/dist/ReactToastify.css";
+import { useNavigate } from "react-router-dom";
 
 const PrescriptionForm = () => {
+  const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState("Chief Complaint");
   const [examinationInput, setExaminationInput] = useState("");
   const [investigationInput, setInvestigationInput] = useState("");
@@ -21,6 +25,53 @@ const PrescriptionForm = () => {
   const [treatmentPlans, setTreatmentPlans] = useState([]);
   const [procedures, setProcedures] = useState([]);
   const [adviceInstructions, setAdviceInstructions] = useState([]);
+  const [prescriptionId, setPrescriptionId] = useState(null);
+  const [patientQuery, setPatientQuery] = useState("");
+  const [patientResults, setPatientResults] = useState([]);
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const [suggestions, setSuggestions] = useState({
+    examination: [],
+    investigation: [],
+    diagnosis: [],
+    adviceInstruction: [],
+    treatmentPlan: []
+  });
+
+  useEffect(() => {
+    const saved = JSON.parse(localStorage.getItem("suggestions")) || {
+      examination: [],
+      investigation: [],
+      diagnosis: [],
+      adviceInstruction: [],
+      treatmentPlan: []
+    };
+    setSuggestions(saved);
+  }, []);
+
+  useEffect(() => {
+    localStorage.setItem("suggestions", JSON.stringify(suggestions));
+  }, [suggestions]);
+
+  useEffect(() => {
+    const fetchPatients = async () => {
+      if (patientQuery.trim().length < 2) {
+        setPatientResults([]);
+        return;
+      }
+
+      try {
+        const res = await fetch(`http://103.118.16.129:5009/api/getPatientName/search?q=${patientQuery}`);
+        const data = await res.json();
+        setPatientResults(data.suggestions);
+        setShowSuggestions(true);
+      } catch (err) {
+        console.error("Error fetching patients:", err);
+      }
+    };
+
+    const debounce = setTimeout(fetchPatients, 300);
+    return () => clearTimeout(debounce);
+  }, [patientQuery]);
 
   const [form, setForm] = useState({
     doctorName: "",
@@ -38,6 +89,19 @@ const PrescriptionForm = () => {
   });
 
   const [message, setMessage] = useState("");
+
+  const generatePDF = async (prescriptionId) => {
+    const response = await fetch(`http://103.118.16.129:5009/api/generate-prescription-pdf/${prescriptionId}`);
+
+    if (!response.ok) {
+      console.error("Failed to fetch PDF");
+      return;
+    }
+
+    const blob = await response.blob();
+    const url = window.URL.createObjectURL(blob);
+    window.open(url);
+  };
 
   const API_ENDPOINTS = {
     "Chief Complaint": "/api/prescription-complaint",
@@ -70,6 +134,11 @@ const PrescriptionForm = () => {
         patientMail: form.patientMail,
         patientName: form.patientName,
       };
+
+      if (activeTab !== "Chief Complaint" && prescriptionId) {
+        basePayload.prescriptionId = prescriptionId;
+        basePayloadWithoutTheet.prescriptionId = prescriptionId;
+      }
 
       // Pick only relevant part of the form for this tab
       let payload = {};
@@ -116,13 +185,63 @@ const PrescriptionForm = () => {
           break;
       }
 
-      const res = await fetch(`http://localhost:5000${endpoint}`, {
+      const res = await fetch(`http://103.118.16.129:5009${endpoint}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
       });
 
       const data = await res.json();
+      if (res.ok) {
+      // ✅ For Chief Complaint, store prescriptionId
+      if (activeTab === "Chief Complaint" && data.prescriptionId) {
+        setPrescriptionId(data.prescriptionId);
+      }
+
+      toast.success(data.message || "Saved successfully");
+
+      // ✅ Clear the inputs for that specific tab
+      switch (activeTab) {
+        case "Chief Complaint":
+          setForm((prev) => ({ ...prev, chiefComplaint: "" }));
+          break;
+        case "Examination":
+          setForm((prev) => ({ ...prev, examination: [] }));
+          setExaminations([]);
+          break;
+        case "Investigation / Finding":
+          setForm((prev) => ({ ...prev, investigation: [] }));
+          setInvestigations([]);
+          break;
+        case "Diagnosis":
+          setForm((prev) => ({ ...prev, diagnosis: [] }));
+          setDiagnoses([]);
+          break;
+        case "Treatment Plan":
+          setForm((prev) => ({ ...prev, treatmentPlan: [] }));
+          setTreatmentPlans([]);
+          break;
+        case "Procedure":
+          setForm((prev) => ({ ...prev, procedure: [] }));
+          setProcedures([]);
+          break;
+        case "Medication":
+          setForm((prev) => ({ ...prev, medication: [] }));
+          break;
+        case "Advice Instructions":
+          setForm((prev) => ({ ...prev, adviceInstruction: [] }));
+          setAdviceInstructions([]);
+          break;
+      }
+
+      // ✅ Move automatically to the next tab
+      const currentIndex = tabs.indexOf(activeTab);
+      if (currentIndex < tabs.length - 1) {
+        setActiveTab(tabs[currentIndex + 1]);
+      }
+    } else {
+      setMessage(data.message || "Failed to save data");
+    }
       setMessage(data.message || "Saved successfully");
     } catch (err) {
       console.error(err);
@@ -170,13 +289,21 @@ const PrescriptionForm = () => {
 
   const handleAdd = (input, setInput, items, setItems, key) => {
     if (input.trim()) {
-      const newItems = [...items, input.trim()];
+      const newItem = input.trim();
+      const newItems = [...items, newItem];
       setItems(newItems);
 
-      // Update form dynamically
+      // Update main form data if needed
       setForm((prev) => ({ ...prev, [key]: newItems }));
-
       setInput("");
+
+      // ✅ Add new quick suggestion if not already in list
+      setSuggestions((prev) => ({
+        ...prev,
+        [key]: prev[key].includes(newItem)
+          ? prev[key]
+          : [...prev[key], newItem],
+      }));
     }
   };
 
@@ -204,14 +331,44 @@ const PrescriptionForm = () => {
                 <label className="block text-sm text-gray-700 mb-2">
                   Patient Name
                 </label>
-                <input
-                  type="text"
-                  value={form.patientName}
-                  onChange={(e) =>
-                    setForm({ ...form, patientName: e.target.value })
-                  }
-                  className="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-1 focus:ring-blue-500"
-                />
+                <div className="relative">
+                  <input
+                    type="text"
+                    value={patientQuery || form.patientName}
+                    onChange={(e) => {
+                      setPatientQuery(e.target.value);
+                      setForm({ ...form, patientName: e.target.value });
+                    }}
+                    onFocus={() => setShowSuggestions(true)}
+                    onBlur={() => setTimeout(() => setShowSuggestions(false), 200)}
+                    placeholder="Enter patient name"
+                    className="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                  />
+
+                  {/* Dropdown suggestions */}
+                  {showSuggestions && patientResults.length > 0 && (
+                    <div className="absolute z-10 bg-white border rounded shadow-md w-full max-h-48 overflow-y-auto">
+                      {patientResults.map((p) => (
+                        <div
+                          key={p.id}
+                          className="px-3 py-2 hover:bg-gray-100 cursor-pointer"
+                          onClick={() => {
+                            setForm((prev) => ({
+                              ...prev,
+                              patientName: p.name,
+                              patientMail: p.email,
+                            }));
+                            setPatientQuery(p.name);
+                            setShowSuggestions(false);
+                          }}
+                        >
+                          <p className="font-medium">{p.name}</p>
+                          <p className="text-sm text-gray-500">{p.email}</p>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
               </div>
               <div>
                 <label className="block text-sm text-gray-700 mb-2">
@@ -392,16 +549,22 @@ const PrescriptionForm = () => {
               <label className="block text-sm text-gray-700 mb-2">
                 Quick Type
               </label>
-              <div className="flex space-x-2">
-                <button className="border border-gray-300 px-3 py-1 rounded text-sm hover:bg-gray-50">
-                  Periodontitis
-                </button>
-                <button className="border border-gray-300 px-3 py-1 rounded text-sm hover:bg-gray-50">
-                  Infections
-                </button>
-                <button className="border border-gray-300 px-3 py-1 rounded text-sm hover:bg-gray-50">
-                  Apical Periodontitis
-                </button>
+              <div className="flex flex-wrap gap-2">
+                {suggestions.examination.length > 0 ? (
+                  suggestions.examination.map((item, index) => (
+                    <button
+                      key={index}
+                      onClick={() =>
+                        handleAdd(item, setExaminationInput, examinations, setExaminations, "examination")
+                      }
+                      className="border border-gray-300 px-3 py-1 rounded text-sm bg-gray-50 hover:bg-blue-50"
+                    >
+                      {item}
+                    </button>
+                  ))
+                ) : (
+                  <span className="text-gray-400 text-sm">No suggestions yet</span>
+                )}
               </div>
             </div>
           </div>
@@ -545,16 +708,22 @@ const PrescriptionForm = () => {
               <label className="block text-sm text-gray-700 mb-2">
                 Quick Type
               </label>
-              <div className="flex space-x-2">
-                <button className="border border-gray-300 px-3 py-1 rounded text-sm hover:bg-gray-50">
-                  Missing Teeth
-                </button>
-                <button className="border border-gray-300 px-3 py-1 rounded text-sm hover:bg-gray-50">
-                  Sensitivity
-                </button>
-                <button className="border border-gray-300 px-3 py-1 rounded text-sm hover:bg-gray-50">
-                  Bleeding gums
-                </button>
+              <div className="flex flex-wrap gap-2">
+                {suggestions.investigation.length > 0 ? (
+                  suggestions.investigation.map((item, index) => (
+                    <button
+                      key={index}
+                      onClick={() =>
+                        handleAdd(item, setInvestigationInput, investigations, setInvestigations, "inverstigation")
+                      }
+                      className="border border-gray-300 px-3 py-1 rounded text-sm bg-gray-50 hover:bg-blue-50"
+                    >
+                      {item}
+                    </button>
+                  ))
+                ) : (
+                  <span className="text-gray-400 text-sm">No suggestions yet</span>
+                )}
               </div>
             </div>
           </div>
@@ -696,16 +865,22 @@ const PrescriptionForm = () => {
               <label className="block text-sm text-gray-700 mb-2">
                 Quick Type
               </label>
-              <div className="flex space-x-2">
-                <button className="border border-gray-300 px-3 py-1 rounded text-sm hover:bg-gray-50">
-                  Missing Teeth
-                </button>
-                <button className="border border-gray-300 px-3 py-1 rounded text-sm hover:bg-gray-50">
-                  Sensitivity
-                </button>
-                <button className="border border-gray-300 px-3 py-1 rounded text-sm hover:bg-gray-50">
-                  Bleeding gums
-                </button>
+              <div className="flex flex-wrap gap-2">
+                {suggestions.diagnosis.length > 0 ? (
+                  suggestions.diagnosis.map((item, index) => (
+                    <button
+                      key={index}
+                      onClick={() =>
+                        handleAdd(item, setDiagnosisInput, diagnoses, setDiagnoses, "diagnoses")
+                      }
+                      className="border border-gray-300 px-3 py-1 rounded text-sm bg-gray-50 hover:bg-blue-50"
+                    >
+                      {item}
+                    </button>
+                  ))
+                ) : (
+                  <span className="text-gray-400 text-sm">No suggestions yet</span>
+                )}
               </div>
             </div>
           </div>
@@ -874,6 +1049,28 @@ const PrescriptionForm = () => {
                 </div>
               </div>
             )}
+            <div>
+              <label className="block text-sm text-gray-700 mb-2">
+                Quick Type
+              </label>
+              <div className="flex flex-wrap gap-2">
+                {suggestions.treatmentPlan.length > 0 ? (
+                  suggestions.treatmentPlan.map((item, index) => (
+                    <button
+                      key={index}
+                      onClick={() =>
+                        handleAdd(item, setTreatmentPlanInput, treatmentPlans, setTreatmentPlans, "treatmentPlan")
+                      }
+                      className="border border-gray-300 px-3 py-1 rounded text-sm bg-gray-50 hover:bg-blue-50"
+                    >
+                      {item}
+                    </button>
+                  ))
+                ) : (
+                  <span className="text-gray-400 text-sm">No suggestions yet</span>
+                )}
+              </div>
+            </div>
           </div>
         );
 
@@ -1211,16 +1408,22 @@ const PrescriptionForm = () => {
               <label className="block text-sm text-gray-700 mb-2">
                 Quick Type
               </label>
-              <div className="flex space-x-2">
-                <button className="border border-gray-300 px-3 py-1 rounded text-sm hover:bg-gray-50">
-                  Missing Teeth
-                </button>
-                <button className="border border-gray-300 px-3 py-1 rounded text-sm hover:bg-gray-50">
-                  Sensitivity
-                </button>
-                <button className="border border-gray-300 px-3 py-1 rounded text-sm hover:bg-gray-50">
-                  Bleeding gums
-                </button>
+              <div className="flex flex-wrap gap-2">
+                {suggestions.adviceInstruction.length > 0 ? (
+                  suggestions.adviceInstruction.map((item, index) => (
+                    <button
+                      key={index}
+                      onClick={() =>
+                        handleAdd(item, setAdviceInstructionInput, adviceInstructions, setAdviceInstructions, "adiveInstruction")
+                      }
+                      className="border border-gray-300 px-3 py-1 rounded text-sm bg-gray-50 hover:bg-blue-50"
+                    >
+                      {item}
+                    </button>
+                  ))
+                ) : (
+                  <span className="text-gray-400 text-sm">No suggestions yet</span>
+                )}
               </div>
             </div>
           </div>
@@ -1289,7 +1492,7 @@ const PrescriptionForm = () => {
       <div className="flex items-center space-x-2">
         <h1 className="text-3xl font-normal text-black">Prescriptions</h1>
         <div className="flex items-center text-sm text-blue-600">
-          <span className="hover:underline cursor-pointer">Home</span>
+          <span onClick={() => navigate("/prescription")} className="hover:underline cursor-pointer">Home</span>
           <span className="mx-1">›</span>
           <span>Prescriptions</span>
           <span className="mx-1">›</span>
@@ -1333,10 +1536,32 @@ const PrescriptionForm = () => {
             >
               Save Data
             </button>
+            {activeTab === "Advice Instructions" && (
+              <button
+                onClick={() => generatePDF(prescriptionId)}
+                className="px-6 py-2 text-sm font-medium bg-green-500 hover:bg-green-600 text-white rounded"
+                disabled={!prescriptionId}
+              >
+                Generate PDF
+              </button>
+            )}
+            {message && <p>{message}</p>}
           </div>
         </div>
       </div>
     </div>
+    <ToastContainer
+          position="top-right"
+          autoClose={3000}
+          hideProgressBar={false}
+          newestOnTop={false}
+          closeOnClick
+          rtl={false}
+          pauseOnFocusLoss
+          draggable
+          pauseOnHover
+          theme="colored"
+        />
   </div>
 );
 };

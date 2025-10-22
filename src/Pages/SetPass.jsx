@@ -1,40 +1,61 @@
 import React, { useState, useEffect } from "react";
 import Logo from "../assets/logo.png";
 import Pic from "../assets/Pic.png";
-import { useSearchParams } from "react-router-dom";
+import { useSearchParams, useNavigate } from "react-router-dom";
 
 const SetPass = () => {
-  const [form, setForm] = useState({ email: "", newPassword: "", confirmPassword: "" });
+  const [form, setForm] = useState({ newPassword: "", confirmPassword: "" });
   const [message, setMessage] = useState("");
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
+
   const [searchParams] = useSearchParams();
+  const navigate = useNavigate();
+
+  const token = searchParams.get("token");
 
   useEffect(() => {
-    const emailFromURL = searchParams.get("email");
-    if (emailFromURL) {
-      setForm((prev) => ({ ...prev, email: emailFromURL }));
+    if (!token) {
+      setError("Invalid or missing password reset link.");
     }
-  }, []);
+  }, [token]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    setMessage("");
+    setError("");
 
-    if (form.newPassword !== form.confirmPassword) {
-      setMessage("Passwords do not match.");
+    if (!token) {
+      setError("Invalid reset link.");
       return;
     }
 
+    if (form.newPassword !== form.confirmPassword) {
+      setError("Passwords do not match.");
+      return;
+    }
+
+    setLoading(true);
     try {
-      const res = await fetch(`http://103.118.16.129:5005/auth/reset-password?email=${form.email}`, {
+      const res = await fetch(`http://103.118.16.129:5005/auth/reset-password?token=${token}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ newPassword: form.newPassword })
       });
 
       const data = await res.json();
-      setMessage(data.message || "Password reset successful!");
-    } catch (error) {
-      console.error(error);
-      setMessage("Something went wrong!");
+      if (!res.ok) {
+        setError(data.message || "Failed to reset password.");
+      } else {
+        setMessage(data.message || "Password reset successful!");
+        // Optionally redirect to login after a short delay
+        setTimeout(() => navigate("/"), 3000);
+      }
+    } catch (err) {
+      console.error(err);
+      setError("Something went wrong. Please try again.");
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -57,6 +78,9 @@ const SetPass = () => {
             Set your new password below.
           </p>
 
+          {error && <p className="text-center text-red-600 mb-4">{error}</p>}
+          {message && <p className="text-center text-green-600 mb-4">{message}</p>}
+
           <form onSubmit={handleSubmit}>
             <label className="block text-sm font-semibold mb-1">New Password*</label>
             <input
@@ -78,12 +102,16 @@ const SetPass = () => {
               required
             />
 
-            <button type="submit" className="w-full bg-blue-900 text-white py-2 rounded-md font-semibold hover:bg-blue-800">
-              Set New Password
+            <button
+              type="submit"
+              className={`w-full py-2 rounded-md font-semibold text-white ${
+                loading ? "bg-gray-400 cursor-not-allowed" : "bg-blue-900 hover:bg-blue-800"
+              }`}
+              disabled={loading || !token}
+            >
+              {loading ? "Resetting..." : "Set New Password"}
             </button>
           </form>
-
-          {message && <p className="text-center text-green-600 mt-4">{message}</p>}
 
           <p className="text-center text-sm mt-6">
             <a href="/" className="text-blue-600 font-medium">← Back to Login</a>

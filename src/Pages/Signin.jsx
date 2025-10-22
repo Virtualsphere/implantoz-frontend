@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import Logo from '../assets/logo.png';
+import Logo from '../assets/Logo.png';
 import Pic from '../assets/Pic.png'
 
 const Signin = () => {

@@ -1,0 +1,13 @@
+{
+  "rewrites": [
+    {
+      "source": "/api/(.*)",
+      "destination": "http://103.118.16.129:5009/api/$1"
+    },
+    {
+      "source": "/auth/(.*)",
+      "destination": "http://103.118.16.129:5009/auth/$1"
+    },
+    { "source": "/(.*)", "destination": "/index.html" }
+  ]
+}

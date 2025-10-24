@@ -47,7 +47,7 @@ const PatientForm = () => {
       }
   
       try {
-        const response = await fetch(`http://103.118.16.129:5009/api/generate-patient-pdf/${patientId}`, {
+        const response = await fetch(`/api/generate-patient-pdf/${patientId}`, {
           method: 'GET',
           headers: { /* any auth headers if needed */ }
         });
@@ -65,7 +65,7 @@ const PatientForm = () => {
 
 const handleBasicSubmit = async () => {
   try {
-    const res = await fetch("http://103.118.16.129:5009/api/create-patient", {
+    const res = await fetch("/api/create-patient", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -114,7 +114,7 @@ const handleAddressSubmit = async () => {
     return;
   }
   try {
-    const res = await fetch(`http://103.118.16.129:5009/api/add-address/${patientId}`, {
+    const res = await fetch(`/api/add-address/${patientId}`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -156,7 +156,7 @@ const handleMedicalSubmit = async () => {
     return;
   }
   try {
-    const res = await fetch(`http://103.118.16.129:5009/api/add-medical-history/${patientId}`, {
+    const res = await fetch(`/api/add-medical-history/${patientId}`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({

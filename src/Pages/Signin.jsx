@@ -10,7 +10,7 @@ const Signin = () => {
   const handleSubmit= async(e)=>{
     e.preventDefault();
     try {
-      const res= await fetch("http://103.118.16.129:5009/auth/login",
+      const res= await fetch("/auth/login",
         {
           method: "POST",
           headers: { "Content-Type" : "application/json" },

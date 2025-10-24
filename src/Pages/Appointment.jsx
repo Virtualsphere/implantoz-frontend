@@ -17,7 +17,7 @@ const Appointment = () => {
         }
     
         try {
-          const response = await fetch(`http://103.118.16.129:5009/api/generate-appointment-pdf/${appointmentId}`, {
+          const response = await fetch(`/api/generate-appointment-pdf/${appointmentId}`, {
             method: 'GET',
             headers: { /* any auth headers if needed */ }
           });
@@ -37,7 +37,7 @@ const Appointment = () => {
             setLoading(true);
             try {
               const res = await fetch(
-                `http://103.118.16.129:5009/api/get-appointment?search=${search}&page=${page}&limit=${limit}`
+                `/api/get-appointment?search=${search}&page=${page}&limit=${limit}`
               );
               const data = await res.json();
               if (data.success) {

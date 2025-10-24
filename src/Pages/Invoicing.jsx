@@ -18,7 +18,7 @@ const Invoicing = () => {
       }
   
       try {
-        const response = await fetch(`http://103.118.16.129:5009/api/generate-invoice-pdf/${invoiceId}`, {
+        const response = await fetch(`/api/generate-invoice-pdf/${invoiceId}`, {
           method: 'GET',
           headers: { /* any auth headers if needed */ }
         });
@@ -39,7 +39,7 @@ const Invoicing = () => {
       setLoading(true);
       try {
         const res = await fetch(
-          `http://103.118.16.129:5009/api/invoices?search=${search}&page=${page}&limit=${limit}`
+          `/api/invoices?search=${search}&page=${page}&limit=${limit}`
         );
         const data = await res.json();
 

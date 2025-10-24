@@ -46,7 +46,7 @@ const Layout = () => {
   useEffect(() => {
     const token = localStorage.getItem("token");
     if (token) {
-      fetch("http://localhost:5000/auth/users", {
+      fetch("/auth/users", {
         headers: {
           Authorization: `Bearer ${token}`,
         },
@@ -72,7 +72,7 @@ const Layout = () => {
       }
       try {
         const token = localStorage.getItem("token");
-        const res = await fetch(`http://localhost:5000/api/getPatientName/search?q=${searchQuery}`, {
+        const res = await fetch(`/api/getPatientName/search?q=${searchQuery}`, {
           headers: {
             Authorization: `Bearer ${token}`,
           },

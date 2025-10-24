@@ -99,7 +99,8 @@ const PrescriptionForm = () => {
     }
 
     const blob = await response.blob();
-    const url = window.URL.createObjectURL(blob);
+    const pdfBlob = new Blob([blob], { type: "application/pdf" }); // ✅ Explicitly set type
+    const url = window.URL.createObjectURL(pdfBlob);
     window.open(url);
   };
 

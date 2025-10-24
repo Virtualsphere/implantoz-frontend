@@ -36,6 +36,10 @@ export default async function handler(req, res) {
       res.status(response.status).json(data);
     } else {
       // Return files (PDF, text, etc.)
+      const contentDisposition = response.headers.get("content-disposition") || "inline; filename=file.pdf";
+      res.setHeader("Content-Type", contentType || "application/octet-stream");
+      res.setHeader("Content-Disposition", contentDisposition);
+
       const buffer = await response.arrayBuffer();
       res.status(response.status).send(Buffer.from(buffer));
     }

@@ -17,19 +17,19 @@ const Drugs = () => {
         }
     
         try {
-          const response = await fetch(`http://103.118.16.129:5009/api/generate-drug-pdf/${drugId}`, {
+          const response = await fetch(`/api/generate-drug-pdf/${drugId}`, {
             method: 'GET',
             headers: { /* any auth headers if needed */ }
           });
           if (!response.ok) {
-            throw new Error('Failed to generate invoice PDF');
+            throw new Error('Failed to generate drug PDF');
           }
           const blob = await response.blob();
           const url = window.URL.createObjectURL(blob);
           window.open(url);
         } catch (err) {
           console.error(err);
-          toast.error('Failed to fetch invoice PDF');
+          toast.error('Failed to fetch drug PDF');
         }
     };
     useEffect(() => {
@@ -37,7 +37,7 @@ const Drugs = () => {
           setLoading(true);
           try {
             const res = await fetch(
-              `http://103.118.16.129:5009/api/get-drug?search=${search}&page=${page}&limit=${limit}`
+              `/api/get-drug?search=${search}&page=${page}&limit=${limit}`
             );
             const data = await res.json();
             if (data.success) {

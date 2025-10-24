@@ -15,7 +15,7 @@ const AppointmentForm = () => {
   
     const handleSubmit = async () => {
       try {
-        const res= await fetch("http://103.118.16.129:5009/api/create-appointment", {
+        const res= await fetch("/api/create-appointment", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(form)

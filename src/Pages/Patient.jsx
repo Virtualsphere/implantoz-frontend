@@ -19,7 +19,7 @@ const Patient = () => {
         }
     
         try {
-          const response = await fetch(`http://103.118.16.129:5009/api/generate-patient-pdf/${patientId}`, {
+          const response = await fetch(`/api/generate-patient-pdf/${patientId}`, {
             method: 'GET',
             headers: { /* any auth headers if needed */ }
           });
@@ -40,7 +40,7 @@ const Patient = () => {
       try {
         setLoading(true);
         const res = await fetch(
-          `http://103.118.16.129:5009/api/getPatients?page=${page}&limit=${limit}&search=${encodeURIComponent(search)}`
+          `/api/getPatients?page=${page}&limit=${limit}&search=${encodeURIComponent(search)}`
         );
         const data = await res.json();
 

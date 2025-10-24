@@ -51,7 +51,7 @@ const InvoiceForm = () => {
     }
 
     try {
-      const response = await fetch(`http://103.118.16.129:5009/api/generate-invoice-pdf/${invoiceId}`, {
+      const response = await fetch(`/api/generate-invoice-pdf/${invoiceId}`, {
         method: 'GET',
         headers: { /* any auth headers if needed */ }
       });
@@ -72,7 +72,7 @@ const InvoiceForm = () => {
     try {
       if (!prescriptionId) return;
 
-      const res = await axios.get(`http://103.118.16.129:5009/api/prescription/${prescriptionId}`);
+      const res = await axios.get(`/api/prescription/${prescriptionId}`);
       const data = res.data;
 
       setForm(prev => ({
@@ -102,7 +102,7 @@ const InvoiceForm = () => {
 
       const payload = { ...form, total: totalAmount, items };
 
-      const res = await fetch("http://103.118.16.129:5009/api/create-invoice", {
+      const res = await fetch("/api/create-invoice", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),

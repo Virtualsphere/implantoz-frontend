@@ -60,7 +60,7 @@ const PrescriptionForm = () => {
       }
 
       try {
-        const res = await fetch(`http://103.118.16.129:5009/api/getPatientName/search?q=${patientQuery}`);
+        const res = await fetch(`/api/getPatientName/search?q=${patientQuery}`);
         const data = await res.json();
         setPatientResults(data.suggestions);
         setShowSuggestions(true);
@@ -91,7 +91,7 @@ const PrescriptionForm = () => {
   const [message, setMessage] = useState("");
 
   const generatePDF = async (prescriptionId) => {
-    const response = await fetch(`http://103.118.16.129:5009/api/generate-prescription-pdf/${prescriptionId}`);
+    const response = await fetch(`/api/generate-prescription-pdf/${prescriptionId}`);
 
     if (!response.ok) {
       console.error("Failed to fetch PDF");

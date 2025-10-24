@@ -37,7 +37,7 @@ const SetPass = () => {
 
     setLoading(true);
     try {
-      const res = await fetch(`http://103.118.16.129:5005/auth/reset-password?token=${token}`, {
+      const res = await fetch(`/auth/reset-password?token=${token}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ newPassword: form.newPassword })

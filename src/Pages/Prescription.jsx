@@ -23,7 +23,7 @@ const Prescription = () => {
 
   const generatePDF = async (prescriptionId) => {
     try {
-      const res = await fetch(`http://103.118.16.129:5009/api/generate-prescription-pdf/${prescriptionId}`, {
+      const res = await fetch(`/api/generate-prescription-pdf/${prescriptionId}`, {
         method: 'GET'
       });
 
@@ -51,7 +51,7 @@ const Prescription = () => {
       setLoading(true);
       try {
         const res = await fetch(
-          `http://103.118.16.129:5009/api/getPrescription?search=${search}&page=${page}&limit=${limit}`
+          `/api/getPrescription?search=${search}&page=${page}&limit=${limit}`
         );
         const data = await res.json();
 

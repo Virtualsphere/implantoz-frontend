@@ -46,7 +46,7 @@ const Layout = () => {
   useEffect(() => {
     const token = localStorage.getItem("token");
     if (token) {
-      fetch("http://localhost:5000/auth/users", {
+      fetch("/auth/users", {
         headers: {
           Authorization: `Bearer ${token}`,
         },

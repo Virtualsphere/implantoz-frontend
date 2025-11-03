@@ -715,7 +715,7 @@ const PrescriptionForm = () => {
                     <button
                       key={index}
                       onClick={() =>
-                        handleAdd(item, setInvestigationInput, investigations, setInvestigations, "inverstigation")
+                        handleAdd(item, setInvestigationInput, investigations, setInvestigations, "investigation")
                       }
                       className="border border-gray-300 px-3 py-1 rounded text-sm bg-gray-50 hover:bg-blue-50"
                     >
@@ -872,7 +872,7 @@ const PrescriptionForm = () => {
                     <button
                       key={index}
                       onClick={() =>
-                        handleAdd(item, setDiagnosisInput, diagnoses, setDiagnoses, "diagnoses")
+                        handleAdd(item, setDiagnosisInput, diagnoses, setDiagnoses, "diagnosis")
                       }
                       className="border border-gray-300 px-3 py-1 rounded text-sm bg-gray-50 hover:bg-blue-50"
                     >
@@ -1415,7 +1415,7 @@ const PrescriptionForm = () => {
                     <button
                       key={index}
                       onClick={() =>
-                        handleAdd(item, setAdviceInstructionInput, adviceInstructions, setAdviceInstructions, "adiveInstruction")
+                        handleAdd(item, setAdviceInstructionInput, adviceInstructions, setAdviceInstructions, "adviceInstruction")
                       }
                       className="border border-gray-300 px-3 py-1 rounded text-sm bg-gray-50 hover:bg-blue-50"
                     >

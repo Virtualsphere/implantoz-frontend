@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
+import { API_BASE } from '../config/api';
 
 const Patient = () => {
   const navigate = useNavigate();
@@ -19,7 +20,7 @@ const Patient = () => {
         }
     
         try {
-          const response = await fetch(`/api/generate-patient-pdf/${patientId}`, {
+          const response = await fetch(`${API_BASE}/api/generate-patient-pdf/${patientId}`, {
             method: 'GET',
             headers: { /* any auth headers if needed */ }
           });
@@ -40,7 +41,7 @@ const Patient = () => {
       try {
         setLoading(true);
         const res = await fetch(
-          `/api/getPatients?page=${page}&limit=${limit}&search=${encodeURIComponent(search)}`
+          `${API_BASE}/api/getPatients?page=${page}&limit=${limit}&search=${encodeURIComponent(search)}`
         );
         const data = await res.json();
 
@@ -157,8 +158,6 @@ const Patient = () => {
                   <th className="px-6 py-3 text-left text-sm font-medium text-gray-900 border-r border-gray-300">#</th>
                   <th className="px-6 py-3 text-left text-sm font-medium text-gray-900 border-r border-gray-300">Patient Name</th>
                   <th className="px-6 py-3 text-left text-sm font-medium text-gray-900 border-r border-gray-300">Gender</th>
-                  <th className="px-6 py-3 text-left text-sm font-medium text-gray-900 border-r border-gray-300">Date of Birth</th>
-                  <th className="px-6 py-3 text-left text-sm font-medium text-gray-900 border-r border-gray-300">Blood Group</th>
                   <th className="px-6 py-3 text-left text-sm font-medium text-gray-900 border-r border-gray-300">Created On</th>
                   <th className="px-6 py-3 text-left text-sm font-medium text-gray-900 border-r border-gray-300"></th>
                 </tr>
@@ -182,17 +181,15 @@ const Patient = () => {
                       <td className="px-6 py-3 text-sm text-gray-700">{(page - 1) * limit + i + 1}</td>
                       <td className="px-6 py-3 text-sm text-gray-700">{p.first_name} {p.last_name}</td>
                       <td className="px-6 py-3 text-sm text-gray-700">{p.gender}</td>
-                      <td className="px-6 py-3 text-sm text-gray-700">{p.dob}</td>
-                      <td className="px-6 py-3 text-sm text-gray-700">{p.blood_group}</td>
                       <td className="px-6 py-3 text-sm text-gray-700">{p.created_at}</td>
                       <td>
                         <button
                           onClick={() => generatePatientPDF(p.patient_id)}
                           className={`${
-                            p.patient_id ? "bg-gray-700 hover:bg-gray-800" : "bg-gray-400 cursor-not-allowed"
+                            p.patient_id ? "bg-green-500 hover:bg-green-800" : "bg-gray-green cursor-not-allowed"
                           } text-white px-6 py-2 rounded-md transition-colors text-sm font-medium`}
                         >
-                          Download PDF
+                          Download
                         </button>
                       </td>
                     </tr>

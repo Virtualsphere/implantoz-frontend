@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from "react-router-dom";
+import { API_BASE } from '../config/api';
 
 const Drugs = () => {
     const navigate = useNavigate();
@@ -17,7 +18,7 @@ const Drugs = () => {
         }
     
         try {
-          const response = await fetch(`/api/generate-drug-pdf/${drugId}`, {
+          const response = await fetch(`${API_BASE}/api/generate-drug-pdf/${drugId}`, {
             method: 'GET',
             headers: { /* any auth headers if needed */ }
           });
@@ -37,7 +38,7 @@ const Drugs = () => {
           setLoading(true);
           try {
             const res = await fetch(
-              `/api/get-drug?search=${search}&page=${page}&limit=${limit}`
+              `${API_BASE}/api/get-drug?search=${search}&page=${page}&limit=${limit}`
             );
             const data = await res.json();
             if (data.success) {
@@ -170,10 +171,10 @@ const Drugs = () => {
                         <button
                           onClick={() => generateDrugPDF(d.drug_id)}
                           className={`${
-                            d.drug_id ? "bg-gray-700 hover:bg-gray-800" : "bg-gray-400 cursor-not-allowed"
+                            d.drug_id ? "bg-green-500 hover:bg-green-800" : "bg-gray-green cursor-not-allowed"
                           } text-white px-6 py-2 rounded-md transition-colors text-sm font-medium`}
                         >
-                          Download PDF
+                          Download
                         </button>
                       </td>
                       </tr>

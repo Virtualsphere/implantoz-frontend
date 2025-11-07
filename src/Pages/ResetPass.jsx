@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import Logo from "../assets/logo.png";
 import Pic from "../assets/Pic.png";
+import { API_BASE } from '../config/api';
 
 const ResetPass = () => {
   const [form, setForm] = useState({ email: "" });
@@ -9,7 +10,7 @@ const ResetPass = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
-      const res = await fetch("/auth/forget-password", {
+      const res = await fetch(`${API_BASE}/auth/forget-password`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email: form.email })

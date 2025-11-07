@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { API_BASE } from '../config/api';
 
 const Appointment = () => {
   const navigate = useNavigate();
@@ -17,7 +18,7 @@ const Appointment = () => {
         }
     
         try {
-          const response = await fetch(`/api/generate-appointment-pdf/${appointmentId}`, {
+          const response = await fetch(`${API_BASE}/api/generate-appointment-pdf/${appointmentId}`, {
             method: 'GET',
             headers: { /* any auth headers if needed */ }
           });
@@ -37,7 +38,7 @@ const Appointment = () => {
             setLoading(true);
             try {
               const res = await fetch(
-                `/api/get-appointment?search=${search}&page=${page}&limit=${limit}`
+                `${API_BASE}/api/get-appointment?search=${search}&page=${page}&limit=${limit}`
               );
               const data = await res.json();
               if (data.success) {
@@ -160,10 +161,10 @@ const Appointment = () => {
                         <button
                           onClick={() => generateAppointmentPDF(p.appointment_id)}
                           className={`${
-                            p.appointment_id ? "bg-gray-700 hover:bg-gray-800" : "bg-gray-400 cursor-not-allowed"
+                            p.appointment_id ? "bg-green-500 hover:bg-green-800" : "bg-gray-green cursor-not-allowed"
                           } text-white px-6 py-2 rounded-md transition-colors text-sm font-medium`}
                         >
-                          Download PDF
+                          Download
                         </button>
                       </td>
                     </tr>

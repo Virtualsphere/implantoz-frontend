@@ -2,7 +2,7 @@
 export default async function handler(req, res) {
   try {
     // Determine backend base URL
-    const BACKEND_API = "http://103.118.16.129:5009";
+    const BACKEND_API = "http://103.118.16.129:5009" || "http://localhost:5000";
 
     // Remove /api or /auth prefix from request URL
     const path = req.url.replace(/^\/(api|auth)/, "");

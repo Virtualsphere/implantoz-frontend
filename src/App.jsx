@@ -17,6 +17,8 @@ import PrescriptionForm from "./Pages/PrescriptionForm";
 import DrugsForm from "./Pages/DrugsForm";
 import SetPass from "./Pages/SetPass";
 import AppointmentForm from "./Pages/AppointmentForm";
+import Header from "./Pages/Header";
+import Footer from "./Pages/Footer";
 const App = () => {
   return (
     <Router>
@@ -33,6 +35,9 @@ const App = () => {
           <Route path="prescription/form" element={<PrescriptionForm />} />
           <Route path="drugs/form" element={<DrugsForm />} />
           <Route path="appointment/form" element={<AppointmentForm />} />
+          <Route path="header/form" element={<Header />} />
+          <Route path="footer/form" element={<Footer />} />
+
         </Route>
         <Route index element={<Signin />} />
         <Route path="signup" element={<Signup />} />

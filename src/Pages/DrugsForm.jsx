@@ -2,8 +2,11 @@
 import React, { useState } from "react";
 import { ToastContainer, toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
+import { useNavigate } from "react-router-dom";
+import { API_BASE } from '../config/api';
 
 const DrugsForm= ()=> {
+  const navigate = useNavigate();
   const [form, setForm] = useState({
     drugName: "",
     companyName: "",
@@ -20,7 +23,7 @@ const DrugsForm= ()=> {
 
   const handleSubmit = async () => {
     try {
-      const res = await fetch("/api/create-drug", {
+      const res = await fetch(`${API_BASE}/api/create-drug`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(form)
@@ -43,7 +46,7 @@ const DrugsForm= ()=> {
         <div className="flex items-center space-x-2">
           <h1 className="text-3xl font-normal text-black">Drug</h1>
           <div className="flex items-center text-sm text-blue-600">
-            <span onClick={() => navigate("/prescription")} className="hover:underline cursor-pointer">Home</span>
+            <span onClick={() => navigate("/drugs")} className="hover:underline cursor-pointer">Home</span>
             <span className="mx-1">›</span>
             <span>Drug</span>
             <span className="mx-1">›</span>
@@ -54,7 +57,7 @@ const DrugsForm= ()=> {
 
       <div className="px-6 pb-6">
         <div className="bg-white rounded-lg shadow-lg p-6">
-          <div className="grid grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             {Object.entries({ DrugName: "drugName", Company: "companyName", Unit: "unit", Packaging: "unitPackaging", Category: "category", PTS: "pts", PTR: "ptr" }).map(([label, key], i) => (
               <div key={i}>
                 <label className="block text-sm text-gray-700 mb-2">{label}</label>

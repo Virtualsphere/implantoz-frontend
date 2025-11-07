@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import Logo from "../assets/logo.png";
 import Pic from "../assets/Pic.png";
 import { useSearchParams, useNavigate } from "react-router-dom";
+import { API_BASE } from '../config/api';
 
 const SetPass = () => {
   const [form, setForm] = useState({ newPassword: "", confirmPassword: "" });
@@ -37,7 +38,7 @@ const SetPass = () => {
 
     setLoading(true);
     try {
-      const res = await fetch(`/auth/reset-password?token=${token}`, {
+      const res = await fetch(`${API_BASE}/auth/reset-password?token=${token}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ newPassword: form.newPassword })

@@ -1,7 +1,8 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import Logo from '../assets/logo.png';
-import Pic from '../assets/Pic.png'
+import Pic from '../assets/Pic.png';
+import { API_BASE } from '../config/api';
 
 const Signin = () => {
   const [form, setForm]= useState({email:"", password:""});
@@ -10,7 +11,7 @@ const Signin = () => {
   const handleSubmit= async(e)=>{
     e.preventDefault();
     try {
-      const res= await fetch("/auth/login",
+      const res= await fetch(`${API_BASE}/auth/login`,
         {
           method: "POST",
           headers: { "Content-Type" : "application/json" },

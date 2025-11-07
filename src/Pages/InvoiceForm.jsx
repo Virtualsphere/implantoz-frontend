@@ -3,6 +3,7 @@ import axios from 'axios'
 import { ToastContainer, toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import { useNavigate } from "react-router-dom";
+import { API_BASE } from '../config/api';
 
 const InvoiceForm = () => {
   const navigate = useNavigate();
@@ -11,7 +12,7 @@ const InvoiceForm = () => {
   const addItem = () => {
     setItems([...items, { itemName: '', quantity: '', unitCost: '', discount: '', price: '' }])
   }
-
+  
   const deleteItem = (index) => {
     const newItems = items.filter((_, i) => i !== index)
     setItems(newItems)
@@ -51,7 +52,7 @@ const InvoiceForm = () => {
     }
 
     try {
-      const response = await fetch(`/api/generate-invoice-pdf/${invoiceId}`, {
+      const response = await fetch(`${API_BASE}/api/generate-invoice-pdf/${invoiceId}`, {
         method: 'GET',
         headers: { /* any auth headers if needed */ }
       });
@@ -72,7 +73,7 @@ const InvoiceForm = () => {
     try {
       if (!prescriptionId) return;
 
-      const res = await axios.get(`/api/prescription/${prescriptionId}`);
+      const res = await axios.get(`${API_BASE}/api/prescription/${prescriptionId}`);
       const data = res.data;
 
       setForm(prev => ({
@@ -102,7 +103,7 @@ const InvoiceForm = () => {
 
       const payload = { ...form, total: totalAmount, items };
 
-      const res = await fetch("/api/create-invoice", {
+      const res = await fetch(`${API_BASE}/api/create-invoice`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),

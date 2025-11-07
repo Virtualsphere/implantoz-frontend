@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import Logo from "../assets/logo.png";
 import Pic from "../assets/Pic.png";
 import { useNavigate } from "react-router-dom";
+import { API_BASE } from '../config/api';
 const Signup = () => {
   const [form, setForm]= useState({ name:"", email:"", password:"" });
   const [message, setMessage]= useState("");
@@ -9,7 +10,7 @@ const Signup = () => {
   const handleSubmit= async(e)=>{
     e.preventDefault();
     try {
-      const res= await fetch("/auth/register", {
+      const res= await fetch(`${API_BASE}/auth/register`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(form)

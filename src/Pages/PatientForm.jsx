@@ -2,16 +2,34 @@ import React, { useState } from "react";
 import { ToastContainer, toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import { useNavigate } from "react-router-dom";
+import { API_BASE } from '../config/api';
 
 const PatientForm = () => {
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState("basic");
+  const [diseases, setDiseases] = useState([
+    "Diabetes",
+    "High Blood Pressure", 
+    "High Cholesterol",
+    "Heart Problems",
+    "Asthma",
+    "Kidney Disease",
+    "Kidney Stones",
+    "Jaundice",
+    "Rheumatic Fever",
+    "Cancer",
+    "HIV/AIDS",
+    "Blood Thinners",
+    "Pregnancy"
+  ]);
+  const [newDisease, setNewDisease] = useState("");
   const [form, setForm]= useState({
     firstName: "",
     lastName: "",
     emailId: "",
     mobile: "",
     dob: "",
+    age: "",
     bloodGroup: "",
     gender: "",
     address1: "",
@@ -47,7 +65,7 @@ const PatientForm = () => {
       }
   
       try {
-        const response = await fetch(`/api/generate-patient-pdf/${patientId}`, {
+        const response = await fetch(`${API_BASE}/api/generate-patient-pdf/${patientId}`, {
           method: 'GET',
           headers: { /* any auth headers if needed */ }
         });
@@ -65,7 +83,7 @@ const PatientForm = () => {
 
 const handleBasicSubmit = async () => {
   try {
-    const res = await fetch("/api/create-patient", {
+    const res = await fetch(`${API_BASE}/api/create-patient`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -74,6 +92,7 @@ const handleBasicSubmit = async () => {
         email: form.emailId,
         mobile: form.mobile,
         dob: form.dob,
+        age: form.age,
         bloodGroup: form.bloodGroup,
         gender: form.gender,
       }),
@@ -91,6 +110,7 @@ const handleBasicSubmit = async () => {
         emailId: "",
         mobile: "",
         dob: "",
+        age: "",
         bloodGroup: "",
         gender: "",
       }));
@@ -114,7 +134,7 @@ const handleAddressSubmit = async () => {
     return;
   }
   try {
-    const res = await fetch(`/api/add-address/${patientId}`, {
+    const res = await fetch(`${API_BASE}/api/add-address/${patientId}`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -156,7 +176,7 @@ const handleMedicalSubmit = async () => {
     return;
   }
   try {
-    const res = await fetch(`/api/add-medical-history/${patientId}`, {
+    const res = await fetch(`${API_BASE}/api/add-medical-history/${patientId}`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -296,12 +316,12 @@ const handleMedicalSubmit = async () => {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Blood Group
+                    Age
                   </label>
                   <input
                     type="text"
-                    value={form.bloodGroup}
-                    onChange={(e)=> setForm({ ...form, bloodGroup: e.target.value})}
+                    value={form.age}
+                    onChange={(e)=> setForm({ ...form, age: e.target.value})}
                     className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
                   />
                 </div>
@@ -309,12 +329,18 @@ const handleMedicalSubmit = async () => {
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     Gender
                   </label>
-                  <input
-                    type="text"
+                  <select
                     value={form.gender}
-                    onChange={(e)=> setForm({ ...form, gender: e.target.value})}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
-                  />
+                    onChange={(e) => setForm({ ...form, gender: e.target.value })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md 
+                              focus:outline-none focus:ring-1 focus:ring-blue-500 
+                              focus:border-blue-500 bg-white"
+                  >
+                    <option value="">Select Gender</option>
+                    <option value="Male">Male</option>
+                    <option value="Female">Female</option>
+                    <option value="Other">Other</option>
+                  </select>
                 </div>
               </div>
             </div>
@@ -395,22 +421,9 @@ const handleMedicalSubmit = async () => {
           {/* Medical History Tab */}
           {activeTab === "medical" && (
             <div className="space-y-6">
+              {/* Disease Checkboxes */}
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                {[
-                  "Diabetes",
-                  "High Blood Pressure", 
-                  "High Cholesterol",
-                  "Heart Problems",
-                  "Asthma",
-                  "Kidney Disease",
-                  "Kidney Stones",
-                  "Jaundice",
-                  "Rheumatic Fever",
-                  "Cancer",
-                  "HIV/AIDS",
-                  "Blood Thinners",
-                  "Pregnancy"
-                ].map((condition) => (
+                {diseases.map((condition) => (
                   <label key={condition} className="flex items-center space-x-2 text-sm">
                     <input
                       type="checkbox"
@@ -422,7 +435,53 @@ const handleMedicalSubmit = async () => {
                   </label>
                 ))}
               </div>
-              
+
+              {/* Add New Disease Field */}
+              <div className="border-t border-gray-200 pt-4">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Add a New Disease
+                </label>
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    value={newDisease}
+                    onChange={(e) => setNewDisease(e.target.value)}
+                    placeholder="Enter disease name"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const trimmed = newDisease.trim();
+                      if (!trimmed) {
+                        toast.error("Please enter a valid disease name.");
+                        return;
+                      }
+                      if (diseases.includes(trimmed)) {
+                        toast.warning("Disease already exists.");
+                        return;
+                      }
+
+                      // ✅ Add new disease
+                      setDiseases((prev) => [...prev, trimmed]);
+
+                      // ✅ Automatically check it in medical history
+                      setForm((prev) => ({
+                        ...prev,
+                        medicalHistory: [...prev.medicalHistory, trimmed],
+                      }));
+
+                      setNewDisease("");
+                      toast.success("Disease added and selected successfully!");
+                    }}
+                    className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 transition-colors text-sm font-medium"
+                  >
+                    Add
+                  </button>
+                </div>
+              </div>
+
+              {/* Other History */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   Other History
@@ -439,6 +498,7 @@ const handleMedicalSubmit = async () => {
               </div>
             </div>
           )}
+
 
           {/* Save Button */}
           <div className="mt-8 text-center">

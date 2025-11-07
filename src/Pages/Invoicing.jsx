@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
+import { API_BASE } from '../config/api';
 
 const Invoicing = () => {
   const navigate = useNavigate();
@@ -18,7 +19,7 @@ const Invoicing = () => {
       }
   
       try {
-        const response = await fetch(`/api/generate-invoice-pdf/${invoiceId}`, {
+        const response = await fetch(`${API_BASE}/api/generate-invoice-pdf/${invoiceId}`, {
           method: 'GET',
           headers: { /* any auth headers if needed */ }
         });
@@ -39,7 +40,7 @@ const Invoicing = () => {
       setLoading(true);
       try {
         const res = await fetch(
-          `/api/invoices?search=${search}&page=${page}&limit=${limit}`
+          `${API_BASE}/api/invoices?search=${search}&page=${page}&limit=${limit}`
         );
         const data = await res.json();
 
@@ -178,9 +179,9 @@ const Invoicing = () => {
                       <td className="px-6 py-4 text-sm text-gray-700 capitalize">
                         <button
                           onClick={() => generateInvoicePDF(p.invoice_id)}
-                          className="bg-yellow-500 hover:bg-yellow-600 text-white px-6 py-2 rounded text-sm"
+                          className="px-6 py-2 text-sm font-medium bg-green-500 hover:bg-green-600 text-white rounded"
                         >
-                          Generate Invoice PDF
+                          Download
                         </button>
                       </td>
                     </tr>

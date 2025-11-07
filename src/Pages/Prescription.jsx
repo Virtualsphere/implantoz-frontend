@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { useReactToPrint } from "react-to-print";
 import html2canvas from "html2canvas";
 import jsPDF from "jspdf";
+import { API_BASE } from '../config/api';
 
 const Prescription = () => {
   const pdfRef= useRef();
@@ -23,7 +24,7 @@ const Prescription = () => {
 
   const generatePDF = async (prescriptionId) => {
     try {
-      const res = await fetch(`/api/generate-prescription-pdf/${prescriptionId}`, {
+      const res = await fetch(`${API_BASE}/api/generate-prescription-pdf/${prescriptionId}`, {
         method: 'GET'
       });
 
@@ -51,7 +52,7 @@ const Prescription = () => {
       setLoading(true);
       try {
         const res = await fetch(
-          `/api/getPrescription?search=${search}&page=${page}&limit=${limit}`
+          `${API_BASE}/api/getPrescription?search=${search}&page=${page}&limit=${limit}`
         );
         const data = await res.json();
 

@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { Link, Outlet, useLocation, useNavigate } from "react-router-dom";
+import { API_BASE } from '../config/api';
 import {
   Home,
   Users,
@@ -19,6 +20,7 @@ const Layout = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [showSettingsBox, setShowSettingsBox] = useState(false);
 
   // 🆕 Search state
   const [searchQuery, setSearchQuery] = useState("");
@@ -46,7 +48,7 @@ const Layout = () => {
   useEffect(() => {
     const token = localStorage.getItem("token");
     if (token) {
-      fetch("/auth/users", {
+      fetch(`${API_BASE}/auth/users`, {
         headers: {
           Authorization: `Bearer ${token}`,
         },
@@ -72,7 +74,7 @@ const Layout = () => {
       }
       try {
         const token = localStorage.getItem("token");
-        const res = await fetch(`/api/getPatientName/search?q=${searchQuery}`, {
+        const res = await fetch(`${API_BASE}/api/getPatientName/search?q=${searchQuery}`, {
           headers: {
             Authorization: `Bearer ${token}`,
           },
@@ -183,7 +185,36 @@ const Layout = () => {
           {/* Right Icons */}
           <div className="flex items-center space-x-4 text-gray-700">
             <Home className="h-5 w-5 cursor-pointer" onClick={() => navigate("/")} />
-            <Settings className="h-5 w-5 cursor-pointer" />
+            {/* ⚙️ Settings dropdown */}
+            <div className="relative">
+              <Settings
+                className="h-5 w-5 cursor-pointer"
+                onClick={() => setShowSettingsBox((prev) => !prev)}
+              />
+
+              {showSettingsBox && (
+                <div className="absolute right-0 mt-2 w-40 bg-white shadow-lg rounded-md border border-gray-200 z-50 p-2">
+                  <button
+                    onClick={() => {
+                      navigate("/header/form");
+                      setShowSettingsBox(false);
+                    }}
+                    className="w-full text-left px-3 py-1.5 text-sm hover:bg-gray-100 rounded"
+                  >
+                    Header
+                  </button>
+                  <button
+                    onClick={() => {
+                      navigate("/footer/form");
+                      setShowSettingsBox(false);
+                    }}
+                    className="w-full text-left px-3 py-1.5 text-sm hover:bg-gray-100 rounded"
+                  >
+                    Footer
+                  </button>
+                </div>
+              )}
+            </div>
             <div className="relative">
               <User
                 className="h-5 w-5 cursor-pointer"

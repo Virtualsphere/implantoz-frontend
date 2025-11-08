@@ -10,7 +10,7 @@ const Appointment = () => {
       const [limit, setLimit] = useState(10);
       const [page, setPage] = useState(1);
       const [pagination, setPagination] = useState({ totalRecords: 0, totalPages: 0 });
-
+      //FOR GENERATING PDF
       const generateAppointmentPDF = async (appointmentId) => {
         if (!appointmentId) {
           toast.error("Appointment ID missing");

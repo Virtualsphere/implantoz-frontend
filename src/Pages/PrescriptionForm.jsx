@@ -37,6 +37,9 @@ const PrescriptionForm = () => {
   const [showProcedureCamera, setShowProcedureCamera] = useState(false);
   const investigationCamRef = useRef(null);
   const procedureCamRef = useRef(null);
+  const [investigationFacingMode, setInvestigationFacingMode] = useState("environment");
+  const [procedureFacingMode, setProcedureFacingMode] = useState("environment");
+
 
   const [suggestions, setSuggestions] = useState({
     examination: [],
@@ -741,9 +744,20 @@ const PrescriptionForm = () => {
                   <Webcam
                     ref={investigationCamRef}
                     screenshotFormat="image/jpeg"
-                    videoConstraints={{ facingMode: "environment" }}
+                    videoConstraints={{ facingMode: investigationFacingMode }}
                     className="rounded mb-3"
                   />
+
+                  <button
+                    onClick={() =>
+                      setInvestigationFacingMode((prev) =>
+                        prev === "user" ? "environment" : "user"
+                      )
+                    }
+                    className="bg-gray-600 text-white px-3 py-1 rounded text-sm mb-3"
+                  >
+                    Switch Camera
+                  </button>
                   <button
                     onClick={captureInvestigationPhoto}
                     className="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700"
@@ -1185,9 +1199,20 @@ const PrescriptionForm = () => {
                   <Webcam
                     ref={procedureCamRef}
                     screenshotFormat="image/jpeg"
-                    videoConstraints={{ facingMode: "environment" }}
+                    videoConstraints={{ facingMode: procedureFacingMode }}
                     className="rounded mb-3"
                   />
+
+                  <button
+                    onClick={() =>
+                      setProcedureFacingMode((prev) =>
+                        prev === "user" ? "environment" : "user"
+                      )
+                    }
+                    className="bg-gray-600 text-white px-3 py-1 rounded text-sm mb-3"
+                  >
+                    Switch Camera
+                  </button>
                   <button
                     onClick={captureProcedurePhoto}
                     className="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700"

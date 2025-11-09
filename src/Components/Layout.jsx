@@ -97,7 +97,7 @@ const Layout = () => {
   }, [searchQuery]);
 
   return (
-    <div className="flex h-screen">
+    <div className="flex flex-col md:flex-row min-h-screen">
       {/* Sidebar */}
       <div
         className={`bg-[#1e3a5f] text-white flex flex-col w-64

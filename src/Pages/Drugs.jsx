@@ -139,7 +139,7 @@ const Drugs = () => {
               className="flex items-center space-x-1 bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded text-sm"
             >
               <span>+</span>
-              <span>New Patient</span>
+              <span>New Drug</span>
             </button>
           </div>
           </div>

@@ -1,5 +1,4 @@
 import React, { useRef, useState, useEffect  } from "react";
-import { Calendar } from "lucide-react";
 import ToothIcon from "../assets/tooth.png";
 import { ToastContainer, toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
@@ -16,7 +15,6 @@ const PrescriptionForm = () => {
   const [treatmentPlanInput, setTreatmentPlanInput] = useState("");
   const [procedureInput, setProcedureInput] = useState("");
   const [adviceInstructiosInput, setAdviceInstructionInput] = useState("");
-  const [addedItems, setAddedItems] = useState("");
   const [treatmentDate, setTreatmentDate] = useState("");
   const [treatmentAmount, setTreatmentAmount] = useState("");
   const [treatmentTeeth, setTreatmentTeeth] = useState("");
@@ -171,138 +169,149 @@ const PrescriptionForm = () => {
 
 
   const handleSubmit = async (e) => {
-    try {
-      const endpoint = API_ENDPOINTS[activeTab];
-      if (!endpoint) {
-        setMessage("No API endpoint for this tab");
-        return;
+  try {
+    const endpoint = API_ENDPOINTS[activeTab];
+    if (!endpoint) {
+      setMessage("No API endpoint for this tab");
+      return;
+    }
+
+    const method = prescriptionId ? "PUT" : "POST";
+
+    // 🔍 Tabs that include file uploads
+    const hasFiles =
+      activeTab === "Investigation / Finding" || activeTab === "Procedure";
+
+    let body;
+    let headers = {};
+
+    if (hasFiles) {
+      // 🧾 Use FormData for file upload tabs
+      body = new FormData();
+      body.append("doctorName", form.doctorName);
+      body.append("patientMail", form.patientMail);
+      body.append("patientName", form.patientName);
+      body.append("teethSpecification", form.teethSpecification || "");
+      if (prescriptionId) body.append("prescriptionId", prescriptionId);
+
+      if (activeTab === "Investigation / Finding") {
+        body.append("investigation", JSON.stringify(form.investigation));
+        investigationFiles.forEach((file) => body.append("files", file));
+      } else if (activeTab === "Procedure") {
+        body.append("procedure", JSON.stringify(form.procedure));
+        procedureFiles.forEach((file) => body.append("files", file));
       }
 
-      const method= prescriptionId ? "PUT" : "POST";
+    } else {
+      // 🧾 Use JSON for all other tabs
+      const payload = {
+        doctorName: form.doctorName,
+        patientMail: form.patientMail,
+        patientName: form.patientName,
+        teethSpecification: form.teethSpecification || "",
+      };
 
-      // 👉 Use FormData instead of JSON for all tabs (handles both text + files)
-      const formData = new FormData();
+      if (prescriptionId) payload.prescriptionId = prescriptionId;
 
-      // Common fields
-      formData.append("doctorName", form.doctorName);
-      formData.append("patientMail", form.patientMail);
-      formData.append("patientName", form.patientName);
-      formData.append("teethSpecification", form.teethSpecification || "");
-      if (prescriptionId) formData.append("prescriptionId", prescriptionId);
-
-      // Handle specific tab
+      // Tab-specific fields
       switch (activeTab) {
         case "Chief Complaint":
-          formData.append("chiefComplaint", form.chiefComplaint);
+          payload.chiefComplaint = form.chiefComplaint;
           break;
-
         case "Examination":
-          formData.append("examination", JSON.stringify(form.examination));
+          payload.examination = form.examination;
           break;
-
-        case "Investigation / Finding":
-          formData.append("investigation", JSON.stringify(form.investigation));
-          if (investigationFiles.length > 0) {
-            investigationFiles.forEach((file) => formData.append("files", file));
-          }
-          break;
-
         case "Diagnosis":
-          formData.append("diagnosis", JSON.stringify(form.diagnosis));
+          payload.diagnosis = form.diagnosis;
           break;
-
         case "Treatment Plan":
-          formData.append("treatmentPlan", JSON.stringify(form.treatmentPlan));
+          payload.treatmentPlan = form.treatmentPlan;
           break;
-
-        case "Procedure":
-          formData.append("procedure", JSON.stringify(form.procedure));
-          if (procedureFiles.length > 0) {
-            procedureFiles.forEach((file) => formData.append("files", file));
-          }
-          break;
-
         case "Medication":
-          formData.append("medication", JSON.stringify(form.medication));
+          payload.medication = form.medication;
           break;
-
         case "Advice Instructions":
-          formData.append("adviceInstruction", JSON.stringify(form.adviceInstruction));
+          payload.adviceInstruction = form.adviceInstruction;
           break;
-
         default:
           break;
       }
 
-      // 🔥 Fetch without JSON headers (FormData auto-handles it)
-      const res = await fetch(`${API_BASE}${endpoint}`, {
-        method,
-        body: formData,
-      });
-
-      const data = await res.json();
-
-      if (res.ok) {
-        // Store prescriptionId if first tab
-        if (activeTab === "Chief Complaint" && data.prescriptionId) {
-          setPrescriptionId(data.prescriptionId);
-        }
-
-        toast.success(data.message || "Saved successfully");
-
-        // ✅ Reset file states after successful upload
-        setInvestigationFiles([]);
-        setProcedureFiles([]);
-
-        // ✅ Clear inputs (same as your existing logic)
-        switch (activeTab) {
-          case "Chief Complaint":
-            setForm((prev) => ({ ...prev, chiefComplaint: "" }));
-            break;
-          case "Examination":
-            setForm((prev) => ({ ...prev, examination: [] }));
-            setExaminations([]);
-            break;
-          case "Investigation / Finding":
-            setForm((prev) => ({ ...prev, investigation: [] }));
-            setInvestigations([]);
-            break;
-          case "Diagnosis":
-            setForm((prev) => ({ ...prev, diagnosis: [] }));
-            setDiagnoses([]);
-            break;
-          case "Treatment Plan":
-            setForm((prev) => ({ ...prev, treatmentPlan: [] }));
-            setTreatmentPlans([]);
-            break;
-          case "Procedure":
-            setForm((prev) => ({ ...prev, procedure: [] }));
-            setProcedures([]);
-            break;
-          case "Medication":
-            setForm((prev) => ({ ...prev, medication: [] }));
-            break;
-          case "Advice Instructions":
-            setForm((prev) => ({ ...prev, adviceInstruction: [] }));
-            setAdviceInstructions([]);
-            break;
-        }
-
-        // ✅ Move automatically to the next tab
-        const currentIndex = tabs.indexOf(activeTab);
-        if (currentIndex < tabs.length - 1) {
-          setActiveTab(tabs[currentIndex + 1]);
-        }
-      } else {
-        setMessage(data.message || "Failed to save data");
-        toast.error(data.message || "Failed to save data");
-      }
-    } catch (err) {
-      console.error(err);
-      toast.error("Something went wrong");
-      setMessage("Something went wrong");
+      body = JSON.stringify(payload);
+      headers["Content-Type"] = "application/json";
     }
-  };
+
+    // 🔥 Send request
+    const res = await fetch(`${API_BASE}${endpoint}`, {
+      method,
+      headers,
+      body,
+    });
+
+    const data = await res.json();
+
+    if (res.ok) {
+      // ✅ Handle success
+      if (activeTab === "Chief Complaint" && data.prescriptionId) {
+        setPrescriptionId(data.prescriptionId);
+      }
+
+      toast.success(data.message || "Saved successfully");
+
+      // ✅ Reset file states
+      setInvestigationFiles([]);
+      setProcedureFiles([]);
+
+      // ✅ Clear inputs
+      switch (activeTab) {
+        case "Chief Complaint":
+          setForm((prev) => ({ ...prev, chiefComplaint: "" }));
+          break;
+        case "Examination":
+          setForm((prev) => ({ ...prev, examination: [] }));
+          setExaminations([]);
+          break;
+        case "Investigation / Finding":
+          setForm((prev) => ({ ...prev, investigation: [] }));
+          setInvestigations([]);
+          break;
+        case "Diagnosis":
+          setForm((prev) => ({ ...prev, diagnosis: [] }));
+          setDiagnoses([]);
+          break;
+        case "Treatment Plan":
+          setForm((prev) => ({ ...prev, treatmentPlan: [] }));
+          setTreatmentPlans([]);
+          break;
+        case "Procedure":
+          setForm((prev) => ({ ...prev, procedure: [] }));
+          setProcedures([]);
+          break;
+        case "Medication":
+          setForm((prev) => ({ ...prev, medication: [] }));
+          break;
+        case "Advice Instructions":
+          setForm((prev) => ({ ...prev, adviceInstruction: [] }));
+          setAdviceInstructions([]);
+          break;
+      }
+
+      // ✅ Move to next tab automatically
+      const currentIndex = tabs.indexOf(activeTab);
+      if (currentIndex < tabs.length - 1) {
+        setActiveTab(tabs[currentIndex + 1]);
+      }
+
+    } else {
+      setMessage(data.message || "Failed to save data");
+      toast.error(data.message || "Failed to save data");
+    }
+  } catch (err) {
+    console.error(err);
+    toast.error("Something went wrong");
+    setMessage("Something went wrong");
+  }
+};
 
 
   const tabs = [
@@ -1701,5 +1710,4 @@ const PrescriptionForm = () => {
   </div>
 );
 };
-
 export default PrescriptionForm;

@@ -49,17 +49,21 @@ const PrescriptionForm = () => {
   });
 
   useEffect(() => {
-    const saved = JSON.parse(localStorage.getItem("suggestions")) || {
-      examination: [],
-      investigation: [],
-      diagnosis: [],
-      adviceInstruction: [],
-      treatmentPlan: [],
-      procedure: []
+    const saved = JSON.parse(localStorage.getItem("suggestions") || "{}");
+  
+    // ✅ Ensure every expected key always exists
+    const normalized = {
+      examination: saved.examination || [],
+      investigation: saved.investigation || [],
+      diagnosis: saved.diagnosis || [],
+      adviceInstruction: saved.adviceInstruction || [],
+      treatmentPlan: saved.treatmentPlan || [],
+      procedure: saved.procedure || [],
     };
-    setSuggestions(saved);
+  
+    setSuggestions(normalized);
   }, []);
-
+  
   useEffect(() => {
     localStorage.setItem("suggestions", JSON.stringify(suggestions));
   }, [suggestions]);

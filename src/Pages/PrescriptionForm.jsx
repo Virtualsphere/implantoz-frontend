@@ -1607,18 +1607,25 @@ const PrescriptionForm = () => {
   return (
   <div className="bg-gray-300 min-h-screen flex flex-col">
     {/* Header Section */}
-    <div className="bg-gray-300 px-6 py-4">
-      <div className="flex items-center space-x-2">
-        <h1 className="text-3xl font-normal text-black">Prescriptions</h1>
-        <div className="flex items-center text-sm text-blue-600">
-          <span onClick={() => navigate("/prescription")} className="hover:underline cursor-pointer">Home</span>
-          <span className="mx-1">›</span>
-          <span>Prescriptions</span>
-          <span className="mx-1">›</span>
-          <span>Add Prescriptions</span>
+    <header className="px-6 py-4">
+        <div className="flex flex-col sm:flex-row sm:items-center space-x-2">
+          <h1 className="text-2xl sm:text-3xl font-semibold text-gray-800">
+            Prescription
+          </h1>
+          <nav className="text-sm text-blue-600 flex flex-wrap gap-1">
+            <span
+              onClick={() => navigate("/prescription")}
+              className="hover:underline cursor-pointer"
+            >
+              Home
+            </span>
+            <span>›</span>
+            <span>Prescription</span>
+            <span>›</span>
+            <span>Add Prescription</span>
+          </nav>
         </div>
-      </div>
-    </div>
+      </header>
 
     {/* Main Content Card */}
     <div className="px-6 pb-6 flex-1 overflow-y-auto">

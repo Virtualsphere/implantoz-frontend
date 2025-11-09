@@ -178,7 +178,7 @@ const PrescriptionForm = () => {
 
     const method = prescriptionId ? "PUT" : "POST";
 
-    // 🔍 Tabs that include file uploads
+    // Tabs that include file uploads
     const hasFiles =
       activeTab === "Investigation / Finding" || activeTab === "Procedure";
 
@@ -186,34 +186,46 @@ const PrescriptionForm = () => {
     let headers = {};
 
     if (hasFiles) {
-      // 🧾 Use FormData for file upload tabs
-      body = new FormData();
-      body.append("doctorName", form.doctorName);
-      body.append("patientMail", form.patientMail);
-      body.append("patientName", form.patientName);
-      body.append("teethSpecification", form.teethSpecification || "");
-      if (prescriptionId) body.append("prescriptionId", prescriptionId);
+      // --- 🧾 Use FormData for multipart requests ---
+      const formData = new FormData();
 
+      // Common fields
+      formData.append("doctorName", form.doctorName || "");
+      formData.append("patientMail", form.patientMail || "");
+      formData.append("patientName", form.patientName || "");
+      formData.append("teethSpecification", form.teethSpecification || "");
+      if (prescriptionId) formData.append("prescriptionId", prescriptionId);
+
+      // Tab-specific logic
       if (activeTab === "Investigation / Finding") {
-        body.append("investigation", JSON.stringify(form.investigation));
-        investigationFiles.forEach((file) => body.append("files", file));
+        formData.append(
+          "investigation",
+          JSON.stringify(form.investigation || [])
+        );
+        investigationFiles.forEach((file) => {
+          // append only valid file objects
+          if (file instanceof File) formData.append("files", file);
+        });
       } else if (activeTab === "Procedure") {
-        body.append("procedure", JSON.stringify(form.procedure));
-        procedureFiles.forEach((file) => body.append("files", file));
+        formData.append("procedure", JSON.stringify(form.procedure || []));
+        procedureFiles.forEach((file) => {
+          if (file instanceof File) formData.append("files", file);
+        });
       }
 
+      body = formData;
+      // ❌ Do NOT set Content-Type manually — browser sets multipart boundary
     } else {
-      // 🧾 Use JSON for all other tabs
+      // --- 🧾 JSON for other tabs ---
       const payload = {
-        doctorName: form.doctorName,
-        patientMail: form.patientMail,
-        patientName: form.patientName,
+        doctorName: form.doctorName || "",
+        patientMail: form.patientMail || "",
+        patientName: form.patientName || "",
         teethSpecification: form.teethSpecification || "",
       };
 
       if (prescriptionId) payload.prescriptionId = prescriptionId;
 
-      // Tab-specific fields
       switch (activeTab) {
         case "Chief Complaint":
           payload.chiefComplaint = form.chiefComplaint;
@@ -233,15 +245,13 @@ const PrescriptionForm = () => {
         case "Advice Instructions":
           payload.adviceInstruction = form.adviceInstruction;
           break;
-        default:
-          break;
       }
 
       body = JSON.stringify(payload);
       headers["Content-Type"] = "application/json";
     }
 
-    // 🔥 Send request
+    // ✅ Always await response completely
     const res = await fetch(`${API_BASE}${endpoint}`, {
       method,
       headers,
@@ -251,18 +261,17 @@ const PrescriptionForm = () => {
     const data = await res.json();
 
     if (res.ok) {
-      // ✅ Handle success
       if (activeTab === "Chief Complaint" && data.prescriptionId) {
         setPrescriptionId(data.prescriptionId);
       }
 
       toast.success(data.message || "Saved successfully");
 
-      // ✅ Reset file states
+      // Reset files
       setInvestigationFiles([]);
       setProcedureFiles([]);
 
-      // ✅ Clear inputs
+      // Clear current tab inputs
       switch (activeTab) {
         case "Chief Complaint":
           setForm((prev) => ({ ...prev, chiefComplaint: "" }));
@@ -296,18 +305,17 @@ const PrescriptionForm = () => {
           break;
       }
 
-      // ✅ Move to next tab automatically
+      // Move to next tab automatically
       const currentIndex = tabs.indexOf(activeTab);
       if (currentIndex < tabs.length - 1) {
         setActiveTab(tabs[currentIndex + 1]);
       }
-
     } else {
       setMessage(data.message || "Failed to save data");
       toast.error(data.message || "Failed to save data");
     }
   } catch (err) {
-    console.error(err);
+    console.error("Submit Error:", err);
     toast.error("Something went wrong");
     setMessage("Something went wrong");
   }

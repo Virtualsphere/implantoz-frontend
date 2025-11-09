@@ -1,42 +1,53 @@
 // api/proxy.js
+
+// 🧩 Disable body parsing so file streams are preserved
+export const config = {
+  api: {
+    bodyParser: false,
+  },
+};
+
 export default async function handler(req, res) {
   try {
-    // Determine backend base URL
     const BACKEND_API = "http://103.118.16.129:5009" || "http://localhost:5000";
 
-    // Remove /api or /auth prefix from request URL
+    // Preserve your original /api and /auth routing logic
     const path = req.url.replace(/^\/(api|auth)/, "");
+    const backendUrl = `${BACKEND_API}${
+      req.url.startsWith("/auth") ? "/auth" + path : "/api" + path
+    }`;
 
-    // Full backend URL
-    const backendUrl = `${BACKEND_API}${req.url.startsWith("/auth") ? "/auth" + path : "/api" + path}`;
-
-    // Prepare fetch options
-    const options = {
+    // Forward raw request to backend (this fixes Busboy)
+    const fetchOptions = {
       method: req.method,
       headers: {
         ...req.headers,
-        host: "" // remove host header for backend compatibility
+        host: "", // remove host header for backend compatibility
       },
+      body:
+        req.method === "GET" || req.method === "HEAD"
+          ? undefined
+          : req, // forward raw body directly
     };
 
-    // Only send body for non-GET/HEAD requests
-    if (req.method !== "GET" && req.method !== "HEAD") {
-      options.body = JSON.stringify(req.body);
-    }
+    const response = await fetch(backendUrl, fetchOptions);
 
-    // Call backend
-    const response = await fetch(backendUrl, options);
+    // Copy backend headers to frontend response
+    response.headers.forEach((value, key) => res.setHeader(key, value));
 
-    // Get content type
+    // Detect content type
     const contentType = response.headers.get("content-type");
 
-    // Return JSON response
     if (contentType && contentType.includes("application/json")) {
+      // JSON responses
       const data = await response.json();
       res.status(response.status).json(data);
     } else {
-      // Return files (PDF, text, etc.)
-      const contentDisposition = response.headers.get("content-disposition") || "inline; filename=file.pdf";
+      // File or other binary responses
+      const contentDisposition =
+        response.headers.get("content-disposition") ||
+        "inline; filename=file.pdf";
+
       res.setHeader("Content-Type", contentType || "application/octet-stream");
       res.setHeader("Content-Disposition", contentDisposition);
 
@@ -45,6 +56,10 @@ export default async function handler(req, res) {
     }
   } catch (error) {
     console.error("Proxy Error:", error);
-    res.status(500).json({ error: "Proxy Server Error", details: error.message });
+    res.status(500).json({
+      success: false,
+      message: "Proxy Server Error",
+      details: error.message,
+    });
   }
 }

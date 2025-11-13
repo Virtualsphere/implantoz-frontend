@@ -1,9 +1,9 @@
-import React, { useRef, useState, useEffect  } from "react";
+import React, { useRef, useState, useEffect } from "react";
 import ToothIcon from "../assets/tooth.png";
 import { ToastContainer, toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import { useNavigate } from "react-router-dom";
-import { API_BASE } from '../config/api';
+import { API_BASE } from "../config/api";
 import Webcam from "react-webcam";
 
 const PrescriptionForm = () => {
@@ -29,15 +29,18 @@ const PrescriptionForm = () => {
   const [patientQuery, setPatientQuery] = useState("");
   const [patientResults, setPatientResults] = useState([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
+
+  // store files as objects: { name, file: File, preview: string (blob:... or data:image/...) }
   const [investigationFiles, setInvestigationFiles] = useState([]);
   const [procedureFiles, setProcedureFiles] = useState([]);
+
   const [showInvestigationCamera, setShowInvestigationCamera] = useState(false);
   const [showProcedureCamera, setShowProcedureCamera] = useState(false);
   const investigationCamRef = useRef(null);
   const procedureCamRef = useRef(null);
-  const [investigationFacingMode, setInvestigationFacingMode] = useState("environment");
+  const [investigationFacingMode, setInvestigationFacingMode] =
+    useState("environment");
   const [procedureFacingMode, setProcedureFacingMode] = useState("environment");
-
 
   const [suggestions, setSuggestions] = useState({
     examination: [],
@@ -45,13 +48,13 @@ const PrescriptionForm = () => {
     diagnosis: [],
     adviceInstruction: [],
     treatmentPlan: [],
-    procedure: []
+    procedure: [],
   });
 
   useEffect(() => {
     const saved = JSON.parse(localStorage.getItem("suggestions") || "{}");
-  
-    // ✅ Ensure every expected key always exists
+
+    // Ensure every expected key always exists
     const normalized = {
       examination: saved.examination || [],
       investigation: saved.investigation || [],
@@ -60,10 +63,10 @@ const PrescriptionForm = () => {
       treatmentPlan: saved.treatmentPlan || [],
       procedure: saved.procedure || [],
     };
-  
+
     setSuggestions(normalized);
   }, []);
-  
+
   useEffect(() => {
     localStorage.setItem("suggestions", JSON.stringify(suggestions));
   }, [suggestions]);
@@ -76,9 +79,11 @@ const PrescriptionForm = () => {
       }
 
       try {
-        const res = await fetch(`${API_BASE}/api/getPatientName/search?q=${patientQuery}`);
+        const res = await fetch(
+          `${API_BASE}/api/getPatientName/search?q=${patientQuery}`
+        );
         const data = await res.json();
-        setPatientResults(data.suggestions);
+        setPatientResults(data.suggestions || []);
         setShowSuggestions(true);
       } catch (err) {
         console.error("Error fetching patients:", err);
@@ -91,7 +96,7 @@ const PrescriptionForm = () => {
 
   const [form, setForm] = useState({
     doctorName: "",
-    patientMail: "",
+    patientId: "",
     patientName: "",
     teethSpecification: "",
     chiefComplaint: "",
@@ -107,7 +112,9 @@ const PrescriptionForm = () => {
   const [message, setMessage] = useState("");
 
   const generatePDF = async (prescriptionId) => {
-    const response = await fetch(`${API_BASE}/api/generate-prescription-pdf/${prescriptionId}`);
+    const response = await fetch(
+      `${API_BASE}/api/generate-prescription-pdf/${prescriptionId}`
+    );
 
     if (!response.ok) {
       console.error("Failed to fetch PDF");
@@ -115,9 +122,11 @@ const PrescriptionForm = () => {
     }
 
     const blob = await response.blob();
-    const pdfBlob = new Blob([blob], { type: "application/pdf" }); // ✅ Explicitly set type
+    const pdfBlob = new Blob([blob], { type: "application/pdf" });
     const url = window.URL.createObjectURL(pdfBlob);
     window.open(url);
+    // revoke after some time to be safe
+    setTimeout(() => window.URL.revokeObjectURL(url), 60000);
   };
 
   const API_ENDPOINTS = {
@@ -131,192 +140,268 @@ const PrescriptionForm = () => {
     "Advice Instructions": "/api/prescription/advice-instruction",
   };
 
+  // Helper to convert dataURL to File (used if any capture produces base64)
+  const dataURLtoFile = (dataurl, filename) => {
+    if (!dataurl) return null;
+    // dataurl = "data:[<mediatype>][;base64],<data>"
+    const arr = dataurl.split(",");
+    const mimeMatch = arr[0].match(/:(.*?);/);
+    const mime = mimeMatch ? mimeMatch[1] : "image/jpeg";
+    const bstr = atob(arr[1]);
+    let n = bstr.length;
+    const u8arr = new Uint8Array(n);
+    while (n--) {
+      u8arr[n] = bstr.charCodeAt(n);
+    }
+    return new File([u8arr], filename, { type: mime });
+  };
+
   // ====== Investigation Upload & Camera ======
   const handleInvestigationFileChange = (e) => {
-    const files = Array.from(e.target.files);
-    setInvestigationFiles((prev) => [...prev, ...files]);
+    const files = Array.from(e.target.files || []);
+    const mapped = files.map((file) => ({
+      name: file.name,
+      file,
+      preview: URL.createObjectURL(file),
+    }));
+    // append (do not replace)
+    setInvestigationFiles((prev) => [...prev, ...mapped]);
   };
 
   const handleRemoveInvestigationFile = (index) => {
-    setInvestigationFiles((prev) => prev.filter((_, i) => i !== index));
+    setInvestigationFiles((prev) => {
+      const toRemove = prev[index];
+      if (toRemove?.preview?.startsWith("blob:")) {
+        try {
+          URL.revokeObjectURL(toRemove.preview);
+        } catch (e) {}
+      }
+      const next = prev.filter((_, i) => i !== index);
+      return next;
+    });
   };
 
   const captureInvestigationPhoto = async () => {
-    const imageSrc = investigationCamRef.current.getScreenshot();
-    const blob = await fetch(imageSrc).then((r) => r.blob());
-    const file = new File([blob], `investigation-${Date.now()}.jpg`, {
-      type: "image/jpeg",
-    });
-    setInvestigationFiles((prev) => [...prev, file]);
-    setShowInvestigationCamera(false);
+    if (!investigationCamRef.current) return;
+    const imageSrc = investigationCamRef.current.getScreenshot(); // dataURL
+    try {
+      // create File from dataURL
+      const file = dataURLtoFile(imageSrc, `investigation-${Date.now()}.jpg`);
+      const preview = imageSrc; // show base64 immediately
+      setInvestigationFiles((prev) => [
+        ...prev,
+        { name: file.name, file, preview },
+      ]);
+      setShowInvestigationCamera(false);
+    } catch (err) {
+      console.error("Failed to capture investigation photo", err);
+      toast.error("Capture failed");
+    }
   };
 
   // ====== Procedure Upload & Camera ======
   const handleProcedureFileChange = (e) => {
-    const files = Array.from(e.target.files);
-    setProcedureFiles((prev) => [...prev, ...files]);
+    const files = Array.from(e.target.files || []);
+    const mapped = files.map((file) => ({
+      name: file.name,
+      file,
+      preview: URL.createObjectURL(file),
+    }));
+    setProcedureFiles((prev) => [...prev, ...mapped]);
   };
 
   const handleRemoveProcedureFile = (index) => {
-    setProcedureFiles((prev) => prev.filter((_, i) => i !== index));
+    setProcedureFiles((prev) => {
+      const toRemove = prev[index];
+      if (toRemove?.preview?.startsWith("blob:")) {
+        try {
+          URL.revokeObjectURL(toRemove.preview);
+        } catch (e) {}
+      }
+      const next = prev.filter((_, i) => i !== index);
+      return next;
+    });
   };
 
   const captureProcedurePhoto = async () => {
-    const imageSrc = procedureCamRef.current.getScreenshot();
-    const blob = await fetch(imageSrc).then((r) => r.blob());
-    const file = new File([blob], `procedure-${Date.now()}.jpg`, {
-      type: "image/jpeg",
-    });
-    setProcedureFiles((prev) => [...prev, file]);
-    setShowProcedureCamera(false);
+    if (!procedureCamRef.current) return;
+    const imageSrc = procedureCamRef.current.getScreenshot(); // dataURL
+    try {
+      const file = dataURLtoFile(imageSrc, `procedure-${Date.now()}.jpg`);
+      const preview = imageSrc;
+      setProcedureFiles((prev) => [
+        ...prev,
+        { name: file.name, file, preview },
+      ]);
+      setShowProcedureCamera(false);
+    } catch (err) {
+      console.error("Failed to capture procedure photo", err);
+      toast.error("Capture failed");
+    }
   };
 
-
+  // When you submit, convert current files to FormData properly
   const handleSubmit = async (e) => {
-  try {
-    const endpoint = API_ENDPOINTS[activeTab];
-    if (!endpoint) {
-      setMessage("No API endpoint for this tab");
-      return;
+    try {
+      const endpoint = API_ENDPOINTS[activeTab];
+      if (!endpoint) {
+        setMessage("No API endpoint for this tab");
+        return;
+      }
+
+      const method = prescriptionId ? "PUT" : "POST";
+      const hasFiles =
+        activeTab === "Investigation / Finding" || activeTab === "Procedure";
+
+      let body;
+      let headers = {};
+
+      if (hasFiles) {
+        body = new FormData();
+        body.append("doctorName", form.doctorName);
+        body.append("patientId", form.patientId);
+        body.append("patientName", form.patientName);
+        body.append("teethSpecification", form.teethSpecification || "");
+        if (prescriptionId) body.append("prescriptionId", prescriptionId);
+
+        if (activeTab === "Investigation / Finding") {
+          body.append(
+            "investigation",
+            JSON.stringify(form.investigation || [])
+          );
+          // append files
+          investigationFiles.forEach((f) => {
+            // f.file should be a File (for captures we created File). But just in case:
+            const fileToAppend =
+              f.file instanceof File
+                ? f.file
+                : dataURLtoFile(
+                    f.preview,
+                    f.name || `investigation-${Date.now()}.jpg`
+                  );
+            if (fileToAppend) body.append("files", fileToAppend);
+          });
+        } else if (activeTab === "Procedure") {
+          body.append("procedure", JSON.stringify(form.procedure || []));
+          procedureFiles.forEach((f) => {
+            const fileToAppend =
+              f.file instanceof File
+                ? f.file
+                : dataURLtoFile(
+                    f.preview,
+                    f.name || `procedure-${Date.now()}.jpg`
+                  );
+            if (fileToAppend) body.append("files", fileToAppend);
+          });
+        }
+      } else {
+        const payload = {
+          doctorName: form.doctorName,
+          patientId: form.patientId,
+          patientName: form.patientName,
+          teethSpecification: form.teethSpecification || "",
+        };
+
+        if (prescriptionId) payload.prescriptionId = prescriptionId;
+
+        switch (activeTab) {
+          case "Chief Complaint":
+            payload.chiefComplaint = form.chiefComplaint;
+            break;
+          case "Examination":
+            payload.examination = form.examination;
+            break;
+          case "Diagnosis":
+            payload.diagnosis = form.diagnosis;
+            break;
+          case "Treatment Plan":
+            payload.treatmentPlan = form.treatmentPlan;
+            break;
+          case "Medication":
+            payload.medication = form.medication;
+            break;
+          case "Advice Instructions":
+            payload.adviceInstruction = form.adviceInstruction;
+            break;
+          default:
+            break;
+        }
+
+        body = JSON.stringify(payload);
+        headers["Content-Type"] = "application/json";
+      }
+
+      // Send request
+      const res = await fetch(`${API_BASE}${endpoint}`, {
+        method,
+        headers,
+        body,
+      });
+
+      const data = await res.json();
+
+      if (res.ok) {
+        if (activeTab === "Chief Complaint" && data.prescriptionId) {
+          setPrescriptionId(data.prescriptionId);
+        }
+
+        toast.success(data.message || "Saved successfully");
+
+        // Reset file states (but keep previews cleaned)
+        setInvestigationFiles([]);
+        setProcedureFiles([]);
+
+        // Clear inputs by tab
+        switch (activeTab) {
+          case "Chief Complaint":
+            setForm((prev) => ({ ...prev, chiefComplaint: "" }));
+            break;
+          case "Examination":
+            setForm((prev) => ({ ...prev, examination: [] }));
+            setExaminations([]);
+            break;
+          case "Investigation / Finding":
+            setForm((prev) => ({ ...prev, investigation: [] }));
+            setInvestigations([]);
+            break;
+          case "Diagnosis":
+            setForm((prev) => ({ ...prev, diagnosis: [] }));
+            setDiagnoses([]);
+            break;
+          case "Treatment Plan":
+            setForm((prev) => ({ ...prev, treatmentPlan: [] }));
+            setTreatmentPlans([]);
+            break;
+          case "Procedure":
+            setForm((prev) => ({ ...prev, procedure: [] }));
+            setProcedures([]);
+            break;
+          case "Medication":
+            setForm((prev) => ({ ...prev, medication: [] }));
+            break;
+          case "Advice Instructions":
+            setForm((prev) => ({ ...prev, adviceInstruction: [] }));
+            setAdviceInstructions([]);
+            break;
+          default:
+            break;
+        }
+
+        // Move to next tab automatically
+        const currentIndex = tabs.indexOf(activeTab);
+        if (currentIndex < tabs.length - 1) {
+          setActiveTab(tabs[currentIndex + 1]);
+        }
+      } else {
+        setMessage(data.message || "Failed to save data");
+        toast.error(data.message || "Failed to save data");
+      }
+    } catch (err) {
+      console.error(err);
+      toast.error("Something went wrong");
+      setMessage("Something went wrong");
     }
-
-    const method = prescriptionId ? "PUT" : "POST";
-
-    // 🔍 Tabs that include file uploads
-    const hasFiles =
-      activeTab === "Investigation / Finding" || activeTab === "Procedure";
-
-    let body;
-    let headers = {};
-
-    if (hasFiles) {
-      // 🧾 Use FormData for file upload tabs
-      body = new FormData();
-      body.append("doctorName", form.doctorName);
-      body.append("patientMail", form.patientMail);
-      body.append("patientName", form.patientName);
-      body.append("teethSpecification", form.teethSpecification || "");
-      if (prescriptionId) body.append("prescriptionId", prescriptionId);
-
-      if (activeTab === "Investigation / Finding") {
-        body.append("investigation", JSON.stringify(form.investigation));
-        investigationFiles.forEach((file) => body.append("files", file));
-      } else if (activeTab === "Procedure") {
-        body.append("procedure", JSON.stringify(form.procedure));
-        procedureFiles.forEach((file) => body.append("files", file));
-      }
-
-    } else {
-      // 🧾 Use JSON for all other tabs
-      const payload = {
-        doctorName: form.doctorName,
-        patientMail: form.patientMail,
-        patientName: form.patientName,
-        teethSpecification: form.teethSpecification || "",
-      };
-
-      if (prescriptionId) payload.prescriptionId = prescriptionId;
-
-      // Tab-specific fields
-      switch (activeTab) {
-        case "Chief Complaint":
-          payload.chiefComplaint = form.chiefComplaint;
-          break;
-        case "Examination":
-          payload.examination = form.examination;
-          break;
-        case "Diagnosis":
-          payload.diagnosis = form.diagnosis;
-          break;
-        case "Treatment Plan":
-          payload.treatmentPlan = form.treatmentPlan;
-          break;
-        case "Medication":
-          payload.medication = form.medication;
-          break;
-        case "Advice Instructions":
-          payload.adviceInstruction = form.adviceInstruction;
-          break;
-        default:
-          break;
-      }
-
-      body = JSON.stringify(payload);
-      headers["Content-Type"] = "application/json";
-    }
-
-    // 🔥 Send request
-    const res = await fetch(`${API_BASE}${endpoint}`, {
-      method,
-      headers,
-      body,
-    });
-
-    const data = await res.json();
-
-    if (res.ok) {
-      // ✅ Handle success
-      if (activeTab === "Chief Complaint" && data.prescriptionId) {
-        setPrescriptionId(data.prescriptionId);
-      }
-
-      toast.success(data.message || "Saved successfully");
-
-      // ✅ Reset file states
-      setInvestigationFiles([]);
-      setProcedureFiles([]);
-
-      // ✅ Clear inputs
-      switch (activeTab) {
-        case "Chief Complaint":
-          setForm((prev) => ({ ...prev, chiefComplaint: "" }));
-          break;
-        case "Examination":
-          setForm((prev) => ({ ...prev, examination: [] }));
-          setExaminations([]);
-          break;
-        case "Investigation / Finding":
-          setForm((prev) => ({ ...prev, investigation: [] }));
-          setInvestigations([]);
-          break;
-        case "Diagnosis":
-          setForm((prev) => ({ ...prev, diagnosis: [] }));
-          setDiagnoses([]);
-          break;
-        case "Treatment Plan":
-          setForm((prev) => ({ ...prev, treatmentPlan: [] }));
-          setTreatmentPlans([]);
-          break;
-        case "Procedure":
-          setForm((prev) => ({ ...prev, procedure: [] }));
-          setProcedures([]);
-          break;
-        case "Medication":
-          setForm((prev) => ({ ...prev, medication: [] }));
-          break;
-        case "Advice Instructions":
-          setForm((prev) => ({ ...prev, adviceInstruction: [] }));
-          setAdviceInstructions([]);
-          break;
-      }
-
-      // ✅ Move to next tab automatically
-      const currentIndex = tabs.indexOf(activeTab);
-      if (currentIndex < tabs.length - 1) {
-        setActiveTab(tabs[currentIndex + 1]);
-      }
-
-    } else {
-      setMessage(data.message || "Failed to save data");
-      toast.error(data.message || "Failed to save data");
-    }
-  } catch (err) {
-    console.error(err);
-    toast.error("Something went wrong");
-    setMessage("Something went wrong");
-  }
-};
-
+  };
 
   const tabs = [
     "Chief Complaint",
@@ -349,7 +434,6 @@ const PrescriptionForm = () => {
     setTreatmentPlans(newItems);
     setForm((prev) => ({ ...prev, treatmentPlan: newItems }));
 
-    // Reset inputs
     setTreatmentPlanInput("");
     setTreatmentTeeth("");
     setTreatmentDate("");
@@ -362,11 +446,9 @@ const PrescriptionForm = () => {
       const newItems = [...items, newItem];
       setItems(newItems);
 
-      // Update main form data if needed
       setForm((prev) => ({ ...prev, [key]: newItems }));
       setInput("");
 
-      // ✅ Add new quick suggestion if not already in list
       setSuggestions((prev) => ({
         ...prev,
         [key]: prev[key].includes(newItem)
@@ -376,15 +458,12 @@ const PrescriptionForm = () => {
     }
   };
 
-  // Remove item
   const handleRemove = (index, items, setItems, key) => {
     const newItems = items.filter((_, i) => i !== index);
     setItems(newItems);
-
     setForm((prev) => ({ ...prev, [key]: newItems }));
   };
 
-  // Clear all
   const handleClear = (setItems, key) => {
     setItems([]);
     setForm((prev) => ({ ...prev, [key]: [] }));
@@ -397,12 +476,14 @@ const PrescriptionForm = () => {
     }
 
     try {
-      const res = await fetch(`${API_BASE}/api/prescription-update-data/${prescriptionId}`);
+      const res = await fetch(
+        `${API_BASE}/api/prescription-update-data/${prescriptionId}`
+      );
       const data = await res.json();
 
-      if (!res.ok) throw new Error(data.message || "Failed to fetch prescription data");
+      if (!res.ok)
+        throw new Error(data.message || "Failed to fetch prescription data");
 
-      // 🧩 Populate form states based on your backend structure
       setForm({
         ...form,
         chiefComplaint: data.complaint?.complaint || "",
@@ -421,7 +502,9 @@ const PrescriptionForm = () => {
               },
             ]
           : [],
-        procedure: data.procedure?.procedures ? [data.procedure.procedures] : [],
+        procedure: data.procedure?.procedures
+          ? [data.procedure.procedures]
+          : [],
         adviceInstruction: data.adviceInstruction?.instructions || [],
         medication: data.medication
           ? [
@@ -435,7 +518,6 @@ const PrescriptionForm = () => {
           : [],
       });
 
-      // 🧠 Sync tab-level arrays
       setExaminations(data.examination?.examination || []);
       setInvestigations(
         data.investigation?.investigation_type
@@ -455,7 +537,9 @@ const PrescriptionForm = () => {
             ]
           : []
       );
-      setProcedures(data.procedure?.procedures ? [data.procedure.procedures] : []);
+      setProcedures(
+        data.procedure?.procedures ? [data.procedure.procedures] : []
+      );
       setAdviceInstructions(data.adviceInstruction?.instructions || []);
 
       toast.success("Prescription data loaded for editing!");
@@ -464,7 +548,6 @@ const PrescriptionForm = () => {
       toast.error(err.message || "Failed to load prescription data");
     }
   };
-
 
   const renderTabContent = () => {
     switch (activeTab) {
@@ -485,12 +568,13 @@ const PrescriptionForm = () => {
                       setForm({ ...form, patientName: e.target.value });
                     }}
                     onFocus={() => setShowSuggestions(true)}
-                    onBlur={() => setTimeout(() => setShowSuggestions(false), 200)}
+                    onBlur={() =>
+                      setTimeout(() => setShowSuggestions(false), 200)
+                    }
                     placeholder="Enter patient name"
                     className="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-1 focus:ring-blue-500"
                   />
 
-                  {/* Dropdown suggestions */}
                   {showSuggestions && patientResults.length > 0 && (
                     <div className="absolute z-10 bg-white border rounded shadow-md w-full max-h-48 overflow-y-auto">
                       {patientResults.map((p) => (
@@ -501,7 +585,7 @@ const PrescriptionForm = () => {
                             setForm((prev) => ({
                               ...prev,
                               patientName: p.name,
-                              patientMail: p.email,
+                              patientId: p.patient_id,
                             }));
                             setPatientQuery(p.name);
                             setShowSuggestions(false);
@@ -509,6 +593,8 @@ const PrescriptionForm = () => {
                         >
                           <p className="font-medium">{p.name}</p>
                           <p className="text-sm text-gray-500">{p.email}</p>
+                          <p className="text-sm text-gray-500">{p.mobile}</p>
+                          <p className="text-sm text-gray-500">{p.patient_id}</p>
                         </div>
                       ))}
                     </div>
@@ -517,13 +603,13 @@ const PrescriptionForm = () => {
               </div>
               <div>
                 <label className="block text-sm text-gray-700 mb-2">
-                  Patient Mail Id
+                  Patient Id
                 </label>
                 <input
-                  type="email"
-                  value={form.patientMail}
+                  type="text"
+                  value={form.patientId}
                   onChange={(e) =>
-                    setForm({ ...form, patientMail: e.target.value })
+                    setForm({ ...form, patientId: e.target.value })
                   }
                   className="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-1 focus:ring-blue-500"
                 />
@@ -661,7 +747,13 @@ const PrescriptionForm = () => {
                     <button
                       key={index}
                       onClick={() =>
-                        handleAdd(item, setExaminationInput, examinations, setExaminations, "examination")
+                        handleAdd(
+                          item,
+                          setExaminationInput,
+                          examinations,
+                          setExaminations,
+                          "examination"
+                        )
                       }
                       className="border border-gray-300 px-3 py-1 rounded text-sm bg-gray-50 hover:bg-blue-50"
                     >
@@ -669,7 +761,9 @@ const PrescriptionForm = () => {
                     </button>
                   ))
                 ) : (
-                  <span className="text-gray-400 text-sm">No suggestions yet</span>
+                  <span className="text-gray-400 text-sm">
+                    No suggestions yet
+                  </span>
                 )}
               </div>
             </div>
@@ -745,7 +839,9 @@ const PrescriptionForm = () => {
                   className="border p-2 rounded text-sm w-full sm:w-auto"
                 />
                 <button
-                  onClick={() => setShowInvestigationCamera(!showInvestigationCamera)}
+                  onClick={() =>
+                    setShowInvestigationCamera(!showInvestigationCamera)
+                  }
                   className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
                 >
                   {showInvestigationCamera ? "Close Camera" : "Take Photo"}
@@ -780,23 +876,40 @@ const PrescriptionForm = () => {
                 </div>
               )}
 
+              {/* Previews */}
               {investigationFiles.length > 0 && (
-                <div className="mt-3 space-y-1">
-                  <p className="text-sm font-medium text-gray-700">Selected Files:</p>
-                  {investigationFiles.map((file, i) => (
-                    <div
-                      key={i}
-                      className="flex justify-between bg-gray-100 rounded p-2 text-sm"
-                    >
-                      <span>{file.name}</span>
-                      <button
-                        onClick={() => handleRemoveInvestigationFile(i)}
-                        className="text-red-500 hover:text-red-700"
+                <div className="mt-3">
+                  <p className="text-sm font-medium text-gray-700 mb-2">
+                    Selected Images:
+                  </p>
+                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
+                    {investigationFiles.map((file, i) => (
+                      <div
+                        key={i}
+                        className="relative border rounded overflow-hidden bg-gray-50"
                       >
-                        ×
-                      </button>
-                    </div>
-                  ))}
+                        {file.preview &&
+                        (file.preview.startsWith("data:image") ||
+                          file.preview.includes("blob:")) ? (
+                          <img
+                            src={file.preview}
+                            alt={file.name}
+                            className="object-cover w-full h-32"
+                          />
+                        ) : (
+                          <div className="flex items-center justify-center h-32 text-xs text-gray-500">
+                            <span>{file.name}</span>
+                          </div>
+                        )}
+                        <button
+                          onClick={() => handleRemoveInvestigationFile(i)}
+                          className="absolute top-1 right-1 bg-red-500 text-white text-xs rounded-full px-1"
+                        >
+                          ×
+                        </button>
+                      </div>
+                    ))}
+                  </div>
                 </div>
               )}
             </div>
@@ -852,7 +965,13 @@ const PrescriptionForm = () => {
                     <button
                       key={index}
                       onClick={() =>
-                        handleAdd(item, setInvestigationInput, investigations, setInvestigations, "investigation")
+                        handleAdd(
+                          item,
+                          setInvestigationInput,
+                          investigations,
+                          setInvestigations,
+                          "investigation"
+                        )
                       }
                       className="border border-gray-300 px-3 py-1 rounded text-sm bg-gray-50 hover:bg-blue-50"
                     >
@@ -860,7 +979,9 @@ const PrescriptionForm = () => {
                     </button>
                   ))
                 ) : (
-                  <span className="text-gray-400 text-sm">No suggestions yet</span>
+                  <span className="text-gray-400 text-sm">
+                    No suggestions yet
+                  </span>
                 )}
               </div>
             </div>
@@ -970,7 +1091,13 @@ const PrescriptionForm = () => {
                     <button
                       key={index}
                       onClick={() =>
-                        handleAdd(item, setDiagnosisInput, diagnoses, setDiagnoses, "diagnosis")
+                        handleAdd(
+                          item,
+                          setDiagnosisInput,
+                          diagnoses,
+                          setDiagnoses,
+                          "diagnosis"
+                        )
                       }
                       className="border border-gray-300 px-3 py-1 rounded text-sm bg-gray-50 hover:bg-blue-50"
                     >
@@ -978,7 +1105,9 @@ const PrescriptionForm = () => {
                     </button>
                   ))
                 ) : (
-                  <span className="text-gray-400 text-sm">No suggestions yet</span>
+                  <span className="text-gray-400 text-sm">
+                    No suggestions yet
+                  </span>
                 )}
               </div>
             </div>
@@ -988,7 +1117,6 @@ const PrescriptionForm = () => {
       case "Treatment Plan":
         return (
           <div className="space-y-6">
-            {/* Patient details */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
               <div>
                 <label className="block text-sm text-gray-700 mb-2">
@@ -1003,7 +1131,6 @@ const PrescriptionForm = () => {
                   <input
                     type="text"
                     value={treatmentTeeth}
-
                     onChange={(e) => setTreatmentTeeth(e.target.value)}
                     className="w-full pl-10 border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-1 focus:ring-blue-500"
                   />
@@ -1011,7 +1138,6 @@ const PrescriptionForm = () => {
               </div>
             </div>
 
-            {/* Treatment entry */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div>
                 <label className="block text-sm text-gray-700 mb-2">
@@ -1051,7 +1177,6 @@ const PrescriptionForm = () => {
               </div>
             </div>
 
-            {/* List of added treatments */}
             {treatmentPlans.length > 0 && (
               <div>
                 <div className="flex items-center justify-between mb-2">
@@ -1106,6 +1231,7 @@ const PrescriptionForm = () => {
                 </div>
               </div>
             )}
+
             <div>
               <label className="block text-sm text-gray-700 mb-2">
                 Quick Type
@@ -1116,7 +1242,13 @@ const PrescriptionForm = () => {
                     <button
                       key={index}
                       onClick={() =>
-                        handleAdd(item, setTreatmentPlanInput, treatmentPlans, setTreatmentPlans, "treatmentPlan")
+                        handleAdd(
+                          item,
+                          setTreatmentPlanInput,
+                          treatmentPlans,
+                          setTreatmentPlans,
+                          "treatmentPlan"
+                        )
                       }
                       className="border border-gray-300 px-3 py-1 rounded text-sm bg-gray-50 hover:bg-blue-50"
                     >
@@ -1124,7 +1256,9 @@ const PrescriptionForm = () => {
                     </button>
                   ))
                 ) : (
-                  <span className="text-gray-400 text-sm">No suggestions yet</span>
+                  <span className="text-gray-400 text-sm">
+                    No suggestions yet
+                  </span>
                 )}
               </div>
             </div>
@@ -1215,7 +1349,6 @@ const PrescriptionForm = () => {
                     videoConstraints={{ facingMode: procedureFacingMode }}
                     className="rounded mb-3"
                   />
-
                   <button
                     onClick={() =>
                       setProcedureFacingMode((prev) =>
@@ -1235,23 +1368,40 @@ const PrescriptionForm = () => {
                 </div>
               )}
 
+              {/* Previews */}
               {procedureFiles.length > 0 && (
-                <div className="mt-3 space-y-1">
-                  <p className="text-sm font-medium text-gray-700">Selected Files:</p>
-                  {procedureFiles.map((file, i) => (
-                    <div
-                      key={i}
-                      className="flex justify-between bg-gray-100 rounded p-2 text-sm"
-                    >
-                      <span>{file.name}</span>
-                      <button
-                        onClick={() => handleRemoveProcedureFile(i)}
-                        className="text-red-500 hover:text-red-700"
+                <div className="mt-3">
+                  <p className="text-sm font-medium text-gray-700 mb-2">
+                    Selected Files:
+                  </p>
+                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
+                    {procedureFiles.map((file, i) => (
+                      <div
+                        key={i}
+                        className="relative border rounded overflow-hidden bg-gray-50"
                       >
-                        ×
-                      </button>
-                    </div>
-                  ))}
+                        {file.preview &&
+                        (file.preview.startsWith("data:image") ||
+                          file.preview.includes("blob:")) ? (
+                          <img
+                            src={file.preview}
+                            alt={file.name}
+                            className="object-cover w-full h-32"
+                          />
+                        ) : (
+                          <div className="flex items-center justify-center h-32 text-xs text-gray-500">
+                            <span>{file.name}</span>
+                          </div>
+                        )}
+                        <button
+                          onClick={() => handleRemoveProcedureFile(i)}
+                          className="absolute top-1 right-1 bg-red-500 text-white text-xs rounded-full px-1"
+                        >
+                          ×
+                        </button>
+                      </div>
+                    ))}
+                  </div>
                 </div>
               )}
             </div>
@@ -1305,7 +1455,13 @@ const PrescriptionForm = () => {
                     <button
                       key={index}
                       onClick={() =>
-                        handleAdd(item, setDiagnosisInput, diagnoses, setDiagnoses, "diagnosis")
+                        handleAdd(
+                          item,
+                          setDiagnosisInput,
+                          diagnoses,
+                          setDiagnoses,
+                          "diagnosis"
+                        )
                       }
                       className="border border-gray-300 px-3 py-1 rounded text-sm bg-gray-50 hover:bg-blue-50"
                     >
@@ -1313,7 +1469,9 @@ const PrescriptionForm = () => {
                     </button>
                   ))
                 ) : (
-                  <span className="text-gray-400 text-sm">No suggestions yet</span>
+                  <span className="text-gray-400 text-sm">
+                    No suggestions yet
+                  </span>
                 )}
               </div>
             </div>
@@ -1323,7 +1481,6 @@ const PrescriptionForm = () => {
       case "Medication":
         return (
           <div className="space-y-6">
-            {/* Medication Table */}
             <div className="space-y-4">
               <div className="overflow-x-auto border border-gray-200 rounded">
                 <table className="min-w-full divide-y divide-gray-200">
@@ -1350,7 +1507,6 @@ const PrescriptionForm = () => {
                     {form.medication.length > 0 ? (
                       form.medication.map((med, index) => (
                         <tr key={index} className="bg-white">
-                          {/* Drug Name */}
                           <td className="px-4 py-2">
                             <input
                               type="text"
@@ -1364,8 +1520,6 @@ const PrescriptionForm = () => {
                               className="w-full border border-gray-300 rounded px-2 py-1 focus:outline-none focus:ring-1 focus:ring-blue-500"
                             />
                           </td>
-
-                          {/* Frequency Dropdown */}
                           <td className="px-4 py-2">
                             <select
                               value={med.frequency}
@@ -1386,8 +1540,6 @@ const PrescriptionForm = () => {
                               <option value="0-0-1">0-1-1</option>
                             </select>
                           </td>
-
-                          {/* Duration Dropdown */}
                           <td className="px-4 py-2">
                             <select
                               value={med.duration}
@@ -1406,30 +1558,31 @@ const PrescriptionForm = () => {
                               <option value="14 Days">14 Days</option>
                             </select>
                           </td>
-
-                          {/* Instruction with dropdown and custom option */}
                           <td className="px-4 py-2">
                             <div className="flex flex-col gap-1">
                               <select
                                 value={
-                                  ["Before Food", "After Food", "Other"].includes(med.instruction)
+                                  [
+                                    "Before Food",
+                                    "After Food",
+                                    "Other",
+                                  ].includes(med.instruction)
                                     ? med.instruction
                                     : "Other"
                                 }
                                 onChange={(e) => {
                                   const value = e.target.value;
                                   const updated = [...form.medication];
-
                                   if (value === "Other") {
-                                    // Keep current custom value if already typed
-                                    updated[index].instruction =
-                                      ["Before Food", "After Food"].includes(updated[index].instruction)
-                                        ? ""
-                                        : updated[index].instruction;
+                                    updated[index].instruction = [
+                                      "Before Food",
+                                      "After Food",
+                                    ].includes(updated[index].instruction)
+                                      ? ""
+                                      : updated[index].instruction;
                                   } else {
                                     updated[index].instruction = value;
                                   }
-
                                   setForm({ ...form, medication: updated });
                                 }}
                                 className="w-full border border-gray-300 rounded px-2 py-1 bg-white focus:outline-none focus:ring-1 focus:ring-blue-500"
@@ -1439,9 +1592,9 @@ const PrescriptionForm = () => {
                                 <option value="After Food">After Food</option>
                                 <option value="Other">Other</option>
                               </select>
-
-                              {/* If 'Other' is selected → show text input */}
-                              {(!["Before Food", "After Food"].includes(med.instruction)) && (
+                              {!["Before Food", "After Food"].includes(
+                                med.instruction
+                              ) && (
                                 <input
                                   type="text"
                                   value={med.instruction}
@@ -1456,8 +1609,6 @@ const PrescriptionForm = () => {
                               )}
                             </div>
                           </td>
-
-                          {/* Remove Button */}
                           <td className="px-4 py-2 text-center">
                             <button
                               onClick={() => {
@@ -1487,7 +1638,6 @@ const PrescriptionForm = () => {
                 </table>
               </div>
 
-              {/* Add Medicine Button */}
               <div className="pt-2">
                 <button
                   onClick={() => {
@@ -1594,7 +1744,13 @@ const PrescriptionForm = () => {
                     <button
                       key={index}
                       onClick={() =>
-                        handleAdd(item, setAdviceInstructionInput, adviceInstructions, setAdviceInstructions, "adviceInstruction")
+                        handleAdd(
+                          item,
+                          setAdviceInstructionInput,
+                          adviceInstructions,
+                          setAdviceInstructions,
+                          "adviceInstruction"
+                        )
                       }
                       className="border border-gray-300 px-3 py-1 rounded text-sm bg-gray-50 hover:bg-blue-50"
                     >
@@ -1602,7 +1758,9 @@ const PrescriptionForm = () => {
                     </button>
                   ))
                 ) : (
-                  <span className="text-gray-400 text-sm">No suggestions yet</span>
+                  <span className="text-gray-400 text-sm">
+                    No suggestions yet
+                  </span>
                 )}
               </div>
             </div>
@@ -1610,17 +1768,32 @@ const PrescriptionForm = () => {
         );
 
       default:
-        return (
-          <div className="space-y-6">
-          </div>
-        );
+        return <div className="space-y-6" />;
     }
   };
 
+  // Cleanup object URLs on unmount
+  useEffect(() => {
+    return () => {
+      investigationFiles.forEach((f) => {
+        if (f?.preview?.startsWith("blob:"))
+          try {
+            URL.revokeObjectURL(f.preview);
+          } catch (e) {}
+      });
+      procedureFiles.forEach((f) => {
+        if (f?.preview?.startsWith("blob:"))
+          try {
+            URL.revokeObjectURL(f.preview);
+          } catch (e) {}
+      });
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   return (
-  <div className="bg-gray-300 min-h-screen flex flex-col">
-    {/* Header Section */}
-    <header className="px-6 py-4">
+    <div className="bg-gray-300 min-h-screen flex flex-col">
+      <header className="px-6 py-4">
         <div className="flex flex-col sm:flex-row sm:items-center space-x-2">
           <h1 className="text-2xl sm:text-3xl font-semibold text-gray-800">
             Prescription
@@ -1640,78 +1813,80 @@ const PrescriptionForm = () => {
         </div>
       </header>
 
-    {/* Main Content Card */}
-    <div className="px-6 pb-6 flex-1 overflow-y-auto">
-      <div className="bg-white rounded-lg shadow-lg flex flex-col min-h-0">
-        {/* Tabs + Content + Button wrapper */}
-        <div className="flex flex-col flex-grow">
-          {/* Tabs */}
-          <div className="border-b border-gray-200 overflow-hidden">
-            <div className="flex overflow-x-auto scrollbar-hide">
-              {tabs.map((tab) => (
-                <button
-                  key={tab}
-                  onClick={() => setActiveTab(tab)}
-                  className={`flex-shrink-0 px-4 py-3 text-sm font-medium whitespace-nowrap border-b-2 ${
-                    activeTab === tab
-                      ? "border-blue-500 text-blue-600"
-                      : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
-                  }`}
-                >
-                  {tab}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {/* Content */}
-          <div className="p-6 flex-grow overflow-auto">{renderTabContent()}</div>
-
-          {/* Save Button */}
-          <div className="px-6 pb-6">
-            <button
-              onClick={handleSubmit}
-              className="flex-shrink-0 px-6 py-2 text-sm font-medium bg-blue-500 hover:bg-blue-600 text-white rounded"
-            >
-              Save Data
-            </button>
-            {activeTab === "Advice Instructions" && (
-              <>
-                <button
-                  onClick={() => generatePDF(prescriptionId)}
-                  className="ml-3 px-6 py-2 text-sm font-medium bg-green-500 hover:bg-green-600 text-white rounded"
-                  disabled={!prescriptionId}
-                >
-                  Generate PDF
-                </button>
-
-                <button
-                  onClick={handleLoadForUpdate}
-                  className="ml-3 px-6 py-2 text-sm font-medium bg-yellow-500 hover:bg-yellow-600 text-white rounded"
-                  disabled={!prescriptionId}
+      <div className="px-6 pb-6 flex-1 overflow-y-auto">
+        <div className="bg-white rounded-lg shadow-lg flex flex-col min-h-0">
+          <div className="flex flex-col flex-grow">
+            <div className="border-b border-gray-200 overflow-hidden">
+              <div className="flex overflow-x-auto scrollbar-hide">
+                {tabs.map((tab) => (
+                  <button
+                    key={tab}
+                    onClick={() => setActiveTab(tab)}
+                    className={`flex-shrink-0 px-4 py-3 text-sm font-medium whitespace-nowrap border-b-2 ${
+                      activeTab === tab
+                        ? "border-blue-500 text-blue-600"
+                        : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+                    }`}
                   >
-                  Load for Update
-                </button>
-              </>
-            )}
-            {message && <p>{message}</p>}
+                    {tab}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="p-6 flex-grow overflow-auto">
+              {renderTabContent()}
+            </div>
+
+            <div className="px-6 pb-6">
+              <button
+                onClick={handleSubmit}
+                className="flex-shrink-0 px-6 py-2 text-sm font-medium bg-blue-500 hover:bg-blue-600 text-white rounded"
+              >
+                Save Data
+              </button>
+
+              {activeTab === "Advice Instructions" && (
+                <>
+                  <button
+                    onClick={() => generatePDF(prescriptionId)}
+                    className="ml-3 px-6 py-2 text-sm font-medium bg-green-500 hover:bg-green-600 text-white rounded"
+                    disabled={!prescriptionId}
+                  >
+                    Generate PDF
+                  </button>
+
+                  <button
+                    onClick={handleLoadForUpdate}
+                    className="ml-3 px-6 py-2 text-sm font-medium bg-yellow-500 hover:bg-yellow-600 text-white rounded"
+                    disabled={!prescriptionId}
+                  >
+                    Load for Update
+                  </button>
+                  {prescriptionId && (
+                    <button
+                      onClick={() =>
+                        navigate("/invoicing/form", {
+                          state: { prescriptionId },
+                        })
+                      }
+                      className="ml-3 px-6 py-2 text-sm font-medium bg-purple-500 hover:bg-purple-600 text-white rounded"
+                    >
+                      🧾 Create Invoice
+                    </button>
+                  )}
+                </>
+              )}
+
+              {message && <p>{message}</p>}
+            </div>
           </div>
         </div>
       </div>
+
+      <ToastContainer position="top-right" autoClose={3000} theme="colored" />
     </div>
-    <ToastContainer
-          position="top-right"
-          autoClose={3000}
-          hideProgressBar={false}
-          newestOnTop={false}
-          closeOnClick
-          rtl={false}
-          pauseOnFocusLoss
-          draggable
-          pauseOnHover
-          theme="colored"
-        />
-  </div>
-);
+  );
 };
+
 export default PrescriptionForm;

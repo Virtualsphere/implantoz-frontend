@@ -29,8 +29,8 @@ const InvoiceForm = () => {
   const [form, setForm] = useState({
     patientName: "",
     patientMobile: "",
-    patientMail: "",
-    doctorName: "",
+    patientId: "",
+    doctorId: "",
     invoiceDate: "",
     dueDate: "",
     prescriptionId: "",
@@ -60,8 +60,8 @@ const InvoiceForm = () => {
           ...prev,
           patientName: '',
           patientMobile: '',
-          patientMail: '',
-          doctorName: '',
+          patientId: '',
+          doctorId: '',
           prescriptionId: ''
         }));
         setItems([{ itemName: '', quantity: '', unitCost: '', discount: '', price: '' }]);
@@ -73,8 +73,8 @@ const InvoiceForm = () => {
         ...prev,
         patientName: data.fullName || '',
         patientMobile: data.mobile || '',
-        patientMail: data.email || '',
-        doctorName: data.doctorName || '',
+        patientId: data.patient_id || '',
+        doctorId: data.doctor_id || '',
         prescriptionId
       }));
       setItems(data.items || []);
@@ -84,8 +84,8 @@ const InvoiceForm = () => {
         ...prev,
         patientName: '',
         patientMobile: '',
-        patientMail: '',
-        doctorName: '',
+        patientId: '',
+        doctorId: '',
         prescriptionId
       }));
       setItems([{ itemName: '', quantity: '', unitCost: '', discount: '', price: '' }]);
@@ -106,8 +106,8 @@ const InvoiceForm = () => {
         ...prev,
         patientName: '',
         patientMobile: '',
-        patientMail: '',
-        doctorName: '',
+        patientId: '',
+        doctorId: '',
         prescriptionId: ''
       }));
       setItems([{ itemName: '', quantity: '', unitCost: '', discount: '', price: '' }]);
@@ -166,7 +166,7 @@ const InvoiceForm = () => {
               {[
                 { label: "Patient Name", name: "patientName" },
                 { label: "Patient Mobile No", name: "patientMobile" },
-                { label: "Patient Mail Id", name: "patientMail", type: "email" }
+                { label: "Patient Id", name: "patientId", type: "text" }
               ].map((f) => (
                 <div key={f.name}>
                   <label className="block text-sm text-gray-700 mb-2">{f.label}</label>
@@ -184,11 +184,11 @@ const InvoiceForm = () => {
             {/* Doctor & Dates */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
               <div>
-                <label className="block text-sm text-gray-700 mb-2">Doctor Name</label>
+                <label className="block text-sm text-gray-700 mb-2">Doctor Id</label>
                 <input
                   type="text"
-                  name="doctorName"
-                  value={form.doctorName}
+                  name="doctorId"
+                  value={form.doctorId}
                   onChange={handleInputChange}
                   className="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-1 focus:ring-blue-500"
                 />
@@ -329,8 +329,8 @@ const InvoiceForm = () => {
                 setForm({
                   patientName: '',
                   patientMobile: '',
-                  patientMail: '',
-                  doctorName: '',
+                  patientId: '',
+                  doctorId: '',
                   invoiceDate: '',
                   dueDate: '',
                   prescriptionId: '',

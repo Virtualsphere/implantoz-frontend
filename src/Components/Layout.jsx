@@ -201,16 +201,16 @@ const Layout = () => {
                     }}
                     className="w-full text-left px-3 py-1.5 text-sm hover:bg-gray-100 rounded"
                   >
-                    Header
+                    Pdf Form
                   </button>
                   <button
                     onClick={() => {
-                      navigate("/footer/form");
+                      navigate("/template");
                       setShowSettingsBox(false);
                     }}
                     className="w-full text-left px-3 py-1.5 text-sm hover:bg-gray-100 rounded"
                   >
-                    Footer
+                    Template
                   </button>
                 </div>
               )}

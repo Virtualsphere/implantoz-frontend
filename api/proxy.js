@@ -10,57 +10,52 @@ export default async function handler(req, res) {
   try {
     const BACKEND_API = "http://103.118.16.129:5009" || "http://localhost:5000";
 
-    // ✅ Remove /api or /auth prefix from the incoming path
     const path = req.url.replace(/^\/(api|auth)/, "");
+    const backendUrl = `${BACKEND_API}${
+      req.url.startsWith("/auth") ? "/auth" + path : "/api" + path
+    }`;
 
-    // ✅ Build the full backend URL (works for both /api and /files, etc.)
-    const backendUrl = `${BACKEND_API}${path}`;
-
-    console.log("Proxying request to:", backendUrl);
-
-    // ✅ Prepare fetch options
-    const options = {
+    // ✅ Fix: Add duplex: "half" when forwarding raw body
+    const fetchOptions = {
       method: req.method,
       headers: {
         ...req.headers,
+        host: "", // remove host header for backend compatibility
       },
+      body:
+        req.method === "GET" || req.method === "HEAD"
+          ? undefined
+          : req, // forward request stream directly
+      duplex: "half", // ✅ Required for Vercel / Node 18+ with streams
     };
 
-    // ✅ Send body for non-GET/HEAD requests
-    if (req.method !== "GET" && req.method !== "HEAD") {
-      options.body = JSON.stringify(req.body);
-      options.headers["Content-Type"] = "application/json";
-    }
+    const response = await fetch(backendUrl, fetchOptions);
 
-    // ✅ Fetch from backend
-    const response = await fetch(backendUrl, options);
+    // Copy backend headers
+    response.headers.forEach((value, key) => res.setHeader(key, value));
 
-    // ✅ Forward status and headers
-    res.status(response.status);
-    const contentType = response.headers.get("content-type") || "application/octet-stream";
-    res.setHeader("Content-Type", contentType);
+    const contentType = response.headers.get("content-type");
 
-    // ✅ Handle binary/image responses
-    if (contentType.startsWith("image/") || contentType.includes("application/pdf")) {
-      const arrayBuffer = await response.arrayBuffer();
-      const buffer = Buffer.from(arrayBuffer);
-      res.send(buffer);
-      return;
-    }
-
-    // ✅ Handle JSON responses
-    if (contentType.includes("application/json")) {
+    if (contentType && contentType.includes("application/json")) {
       const data = await response.json();
-      res.json(data);
-      return;
+      res.status(response.status).json(data);
+    } else {
+      const contentDisposition =
+        response.headers.get("content-disposition") ||
+        "inline; filename=file.pdf";
+
+      res.setHeader("Content-Type", contentType || "application/octet-stream");
+      res.setHeader("Content-Disposition", contentDisposition);
+
+      const buffer = await response.arrayBuffer();
+      res.status(response.status).send(Buffer.from(buffer));
     }
-
-    // ✅ Handle text/HTML/etc.
-    const text = await response.text();
-    res.send(text);
-
   } catch (error) {
     console.error("Proxy Error:", error);
-    res.status(500).json({ success: false, message: "Proxy Server Error", details: error.message });
+    res.status(500).json({
+      success: false,
+      message: "Proxy Server Error",
+      details: error.message,
+    });
   }
 }

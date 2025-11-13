@@ -9,6 +9,10 @@
       "destination": "/api/proxy"
     },
     {
+      "source": "/files/(.*)",
+      "destination": "/api/proxy"
+    },
+    {
       "source": "/(.*)",
       "destination": "/index.html"
     }

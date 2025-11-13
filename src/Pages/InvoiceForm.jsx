@@ -1,11 +1,14 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { ToastContainer, toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import { useNavigate } from "react-router-dom";
+import { useLocation } from "react-router-dom";
 import { API_BASE } from '../config/api';
 
 const InvoiceForm = () => {
+  const location = useLocation();
+  const { prescriptionId } = location.state || {};
   const navigate = useNavigate();
   const [items, setItems] = useState([{ itemName: '', quantity: '', unitCost: '', discount: '', price: '' }]);
   const [lastInvoiceId, setLastInvoiceId] = useState(null);
@@ -88,6 +91,12 @@ const InvoiceForm = () => {
       setItems([{ itemName: '', quantity: '', unitCost: '', discount: '', price: '' }]);
     }
   };
+
+  useEffect(() => {
+    if (prescriptionId) {
+      fetchPrescriptionDetails(prescriptionId);
+    }
+  }, [prescriptionId]);
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
@@ -254,7 +263,7 @@ const InvoiceForm = () => {
             <table className="w-full min-w-[800px] border border-gray-300 rounded-lg">
               <thead className="bg-gray-50">
                 <tr>
-                  {["Item Name", "Quantity", "Unit Cost", "Discount", "Price"].map((h) => (
+                  {["Service", "Quantity", "Unit Cost", "Discount", "Price"].map((h) => (
                     <th key={h} className="px-4 py-3 text-left text-sm font-medium text-gray-700 border-r border-gray-300">
                       {h}
                     </th>

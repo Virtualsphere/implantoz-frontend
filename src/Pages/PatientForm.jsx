@@ -1,15 +1,18 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { ToastContainer, toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import { useNavigate } from "react-router-dom";
-import { API_BASE } from '../config/api';
+import { useLocation } from "react-router-dom";
+import { API_BASE } from "../config/api";
 
 const PatientForm = () => {
+  const location = useLocation();
+  const { patientId } = location.state || {};
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState("basic");
   const [diseases, setDiseases] = useState([
     "Diabetes",
-    "High Blood Pressure", 
+    "High Blood Pressure",
     "High Cholesterol",
     "Heart Problems",
     "Asthma",
@@ -20,10 +23,10 @@ const PatientForm = () => {
     "Cancer",
     "HIV/AIDS",
     "Blood Thinners",
-    "Pregnancy"
+    "Pregnancy",
   ]);
   const [newDisease, setNewDisease] = useState("");
-  const [form, setForm]= useState({
+  const [form, setForm] = useState({
     firstName: "",
     lastName: "",
     emailId: "",
@@ -38,199 +41,259 @@ const PatientForm = () => {
     country: "",
     zip: "",
     medicalHistory: [],
-    otherHistory: ""
-  })
-  const [message, setMessage]= useState("");
-  const [patientId, setPatientId] = useState(null);
+    otherHistory: "",
+  });
+  const [message, setMessage] = useState("");
+  const [setPatientId] = useState(null);
   const handleCheckboxChange = (condition) => {
     setForm((prev) => {
       if (prev.medicalHistory.includes(condition)) {
         return {
           ...prev,
-          medicalHistory: prev.medicalHistory.filter((c) => c !== condition)
+          medicalHistory: prev.medicalHistory.filter((c) => c !== condition),
         };
       } else {
         return {
           ...prev,
-          medicalHistory: [...prev.medicalHistory, condition]
+          medicalHistory: [...prev.medicalHistory, condition],
         };
       }
     });
   };
 
   const generatePatientPDF = async (patientId) => {
-      if (!patientId) {
-        toast.error("Invoice ID missing");
-        return;
-      }
-  
-      try {
-        const response = await fetch(`${API_BASE}/api/generate-patient-pdf/${patientId}`, {
-          method: 'GET',
-          headers: { /* any auth headers if needed */ }
-        });
-        if (!response.ok) {
-          throw new Error('Failed to generate invoice PDF');
+    if (!patientId) {
+      toast.error("Patient ID missing");
+      return;
+    }
+
+    try {
+      const response = await fetch(
+        `${API_BASE}/api/generate-patient-pdf/${patientId}`,
+        {
+          method: "GET",
+          headers: {
+            /* any auth headers if needed */
+          },
         }
-        const blob = await response.blob();
-        const url = window.URL.createObjectURL(blob);
-        window.open(url);
-      } catch (err) {
-        console.error(err);
-        toast.error('Failed to fetch invoice PDF');
+      );
+      if (!response.ok) {
+        throw new Error("Failed to generate invoice PDF");
+      }
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      window.open(url);
+    } catch (err) {
+      console.error(err);
+      toast.error("Failed to fetch invoice PDF");
+    }
+  };
+
+  useEffect(() => {
+    const fetchMedicalHistory = async () => {
+      if (!patientId) return; // Only run when patientId is known
+
+      try {
+        const res = await fetch(
+          `${API_BASE}/api/patients/${patientId}/medical-history`
+        );
+        const data = await res.json();
+
+        if (res.ok && data.success) {
+          if (data.data && data.data.length > 0) {
+            // Map database records to your form state
+            const diseaseList = data.data.map((item) => item.disease_name);
+            const combinedHistory = data.data
+              .map((item) => `${item.description}`)
+              .join("\n");
+
+            setForm((prev) => ({
+              ...prev,
+              medicalHistory: diseaseList,
+              otherHistory: combinedHistory,
+            }));
+
+            setDiseases((prev) => {
+              const newOnes = data.data
+                .map((item) => item.disease_name)
+                .filter((name) => !prev.includes(name));
+              return [...prev, ...newOnes];
+            });
+
+            toast.info("Loaded existing medical history.");
+          }
+        } else {
+          toast.warn(data.message || "No medical history found.");
+        }
+      } catch (error) {
+        console.error(error);
+        toast.error("Failed to fetch medical history.");
       }
     };
 
-const handleBasicSubmit = async () => {
-  try {
-    const res = await fetch(`${API_BASE}/api/create-patient`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        firstName: form.firstName,
-        lastName: form.lastName,
-        email: form.emailId,
-        mobile: form.mobile,
-        dob: form.dob,
-        age: form.age,
-        bloodGroup: form.bloodGroup,
-        gender: form.gender,
-      }),
-    });
-    const data = await res.json();
-    if (res.ok && data.patientId) {
-      // ✅ Save the patientId for the next steps
-      setPatientId(data.patientId);
+    fetchMedicalHistory();
+  }, [patientId]);
 
-      // ✅ Clear basic info fields only
-      setForm((prev) => ({
-        ...prev,
-        firstName: "",
-        lastName: "",
-        emailId: "",
-        mobile: "",
-        dob: "",
-        age: "",
-        bloodGroup: "",
-        gender: "",
-      }));
-      // ✅ Move automatically to "address" tab
-      setActiveTab("address");
+  const handleBasicSubmit = async () => {
+    try {
+      let url, method;
 
-      // ✅ Success message
-      toast.success("Patient details saved successfully!");
-    } else {
-      setMessage(data.message || "Failed to save patient details.");
+      if (patientId) {
+        // 🟢 Update existing
+        url = `${API_BASE}/api/update-patient/${patientId}`;
+        method = "PUT";
+      } else {
+        // 🆕 Create new
+        url = `${API_BASE}/api/create-patient`;
+        method = "POST";
+      }
+
+      const res = await fetch(url, {
+        method,
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          firstName: form.firstName,
+          lastName: form.lastName,
+          email: form.emailId,
+          mobile: form.mobile,
+          dob: form.dob,
+          age: form.age,
+          gender: form.gender,
+        }),
+      });
+
+      const data = await res.json();
+
+      if (res.ok) {
+        if (method === "POST") {
+          setPatientId(data.patientId);
+          toast.success("Patient created successfully!");
+          setActiveTab("address");
+        } else {
+          toast.success("Patient info updated successfully!");
+          setActiveTab("address");
+        }
+      } else {
+        toast.error(data.message || "Failed to save patient info");
+      }
+    } catch (error) {
+      console.error(error);
+      toast.error("Something went wrong.");
     }
-  } catch (error) {
-    console.error(error);
-    setMessage("Failed to save patient details.");
-  }
-};
+  };
 
-const handleAddressSubmit = async () => {
-  if (!patientId) {
-    setMessage("Please save basic info first.");
-    return;
-  }
-  try {
-    const res = await fetch(`${API_BASE}/api/add-address/${patientId}`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        addressLine1: form.address1,
-        addressLine2: form.address2,
-        city: form.city,
-        country: form.country,
-        postalCode: form.zip,
-      }),
-    });
-    const data = await res.json();
-    if (res.ok) {
-      // ✅ Clear only address fields
-      setForm((prev) => ({
-        ...prev,
-        address1: "",
-        address2: "",
-        city: "",
-        country: "",
-        zip: "",
-      }));
 
-      // ✅ Move to Medical tab
-      setActiveTab("medical");
-
-      toast.success("Address saved successfully!");
-    } else {
-      setMessage(data.message || "Failed to save address.");
+  const handleAddressSubmit = async () => {
+    if (!patientId) {
+      setMessage("Please save basic info first.");
+      return;
     }
-  } catch (error) {
-    console.error(error);
-    setMessage("Failed to save address.");
-  }
-};
+    try {
+      const res = await fetch(`${API_BASE}/api/add-address/${patientId}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          addressLine1: form.address1,
+          addressLine2: form.address2,
+          city: form.city,
+          country: form.country,
+          postalCode: form.zip,
+        }),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        // ✅ Clear only address fields
+        setForm((prev) => ({
+          ...prev,
+          address1: "",
+          address2: "",
+          city: "",
+          country: "",
+          zip: "",
+        }));
 
-const handleMedicalSubmit = async () => {
-  if (!patientId) {
-    setMessage("Please save basic info first.");
-    return;
-  }
-  try {
-    const res = await fetch(`${API_BASE}/api/add-medical-history/${patientId}`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        disease_name: form.medicalHistory,
-        history: form.otherHistory,
-      }),
-    });
-    const data = await res.json();
-    if (res.ok) {
-      // ✅ Clear only medical history fields
-      setForm((prev) => ({
-        ...prev,
-        medicalHistory: [],
-        otherHistory: "",
-      }));
+        // ✅ Move to Medical tab
+        setActiveTab("medical");
 
-      // ✅ Optionally go back to Basic Info or show completion message
-      setActiveTab("basic");
-      toast.success("Medical history saved successfully! Patient record complete.");
-    } else {
-      setMessage(data.message || "Failed to save medical history.");
+        toast.success("Address saved successfully!");
+      } else {
+        setMessage(data.message || "Failed to save address.");
+      }
+    } catch (error) {
+      console.error(error);
+      setMessage("Failed to save address.");
     }
-  } catch (error) {
-    console.error(error);
-    setMessage("Failed to save medical history.");
-  }
-};
+  };
 
+  const handleMedicalSubmit = async () => {
+    if (!patientId) {
+      setMessage("Please save basic info first.");
+      return;
+    }
+    try {
+      const res = await fetch(
+        `${API_BASE}/api/add-medical-history/${patientId}`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            disease_name: form.medicalHistory,
+            history: form.otherHistory,
+          }),
+        }
+      );
+      const data = await res.json();
+      if (res.ok) {
+        // ✅ Clear only medical history fields
+        setForm((prev) => ({
+          ...prev,
+          medicalHistory: [],
+          otherHistory: "",
+        }));
+
+        // ✅ Optionally go back to Basic Info or show completion message
+        setActiveTab("basic");
+        toast.success(
+          "Medical history saved successfully! Patient record complete."
+        );
+      } else {
+        setMessage(data.message || "Failed to save medical history.");
+      }
+    } catch (error) {
+      console.error(error);
+      setMessage("Failed to save medical history.");
+    }
+  };
 
   return (
     <div className="min-h-screen bg-gray-300 p-4">
-        {/* Header */}
+      {/* Header */}
       <div className="bg-gray-300 px-6 py-4">
-          <div className="flex items-center space-x-2">
-            <h1 className="text-3xl font-normal text-black">Patient</h1>
-            <div className="flex items-center text-sm text-blue-600">
-              <span onClick={() => navigate("/Patient")} className="hover:underline cursor-pointer">Home</span>
-              <span className="mx-1">›</span>
-              <span>Patient</span>
-              <span className="mx-1">›</span>
-              <span>Add Paitent</span>
-            </div>
+        <div className="flex items-center space-x-2">
+          <h1 className="text-3xl font-normal text-black">Patient</h1>
+          <div className="flex items-center text-sm text-blue-600">
+            <span
+              onClick={() => navigate("/Patient")}
+              className="hover:underline cursor-pointer"
+            >
+              Home
+            </span>
+            <span className="mx-1">›</span>
+            <span>Patient</span>
+            <span className="mx-1">›</span>
+            <span>Add Paitent</span>
           </div>
+        </div>
       </div>
 
       <div className="max-w-5xl mx-auto bg-white rounded-lg shadow-lg overflow-hidden">
-
         {/* Tabs */}
         <div className="bg-white">
           <div className="flex border-b border-gray-200">
             {[
               { key: "basic", label: "Basic Info" },
               { key: "address", label: "Address" },
-              { key: "medical", label: "Medical History" }
+              { key: "medical", label: "Medical History" },
             ].map((tab) => (
               <button
                 key={tab.key}
@@ -260,7 +323,9 @@ const handleMedicalSubmit = async () => {
                   <input
                     type="text"
                     value={form.firstName}
-                    onChange={(e)=> setForm({ ...form, firstName: e.target.value})}
+                    onChange={(e) =>
+                      setForm({ ...form, firstName: e.target.value })
+                    }
                     className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
                   />
                 </div>
@@ -271,7 +336,9 @@ const handleMedicalSubmit = async () => {
                   <input
                     type="text"
                     value={form.lastName}
-                    onChange={(e)=> setForm({ ...form, lastName: e.target.value})}
+                    onChange={(e) =>
+                      setForm({ ...form, lastName: e.target.value })
+                    }
                     className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
                   />
                 </div>
@@ -282,12 +349,14 @@ const handleMedicalSubmit = async () => {
                   <input
                     type="email"
                     value={form.emailId}
-                    onChange={(e)=> setForm({ ...form, emailId: e.target.value})}
+                    onChange={(e) =>
+                      setForm({ ...form, emailId: e.target.value })
+                    }
                     className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
                   />
                 </div>
               </div>
-              
+
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -296,7 +365,9 @@ const handleMedicalSubmit = async () => {
                   <input
                     type="text"
                     value={form.mobile}
-                    onChange={(e)=> setForm({ ...form, mobile: e.target.value})}
+                    onChange={(e) =>
+                      setForm({ ...form, mobile: e.target.value })
+                    }
                     className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
                   />
                 </div>
@@ -307,7 +378,7 @@ const handleMedicalSubmit = async () => {
                   <input
                     type="date"
                     value={form.dob}
-                    onChange={(e)=> setForm({ ...form, dob: e.target.value})}
+                    onChange={(e) => setForm({ ...form, dob: e.target.value })}
                     className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
                   />
                 </div>
@@ -321,7 +392,7 @@ const handleMedicalSubmit = async () => {
                   <input
                     type="text"
                     value={form.age}
-                    onChange={(e)=> setForm({ ...form, age: e.target.value})}
+                    onChange={(e) => setForm({ ...form, age: e.target.value })}
                     className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
                   />
                 </div>
@@ -331,7 +402,9 @@ const handleMedicalSubmit = async () => {
                   </label>
                   <select
                     value={form.gender}
-                    onChange={(e) => setForm({ ...form, gender: e.target.value })}
+                    onChange={(e) =>
+                      setForm({ ...form, gender: e.target.value })
+                    }
                     className="w-full px-3 py-2 border border-gray-300 rounded-md 
                               focus:outline-none focus:ring-1 focus:ring-blue-500 
                               focus:border-blue-500 bg-white"
@@ -357,7 +430,9 @@ const handleMedicalSubmit = async () => {
                   <input
                     type="text"
                     value={form.address1}
-                    onChange={(e)=> setForm({ ...form, address1: e.target.value})}
+                    onChange={(e) =>
+                      setForm({ ...form, address1: e.target.value })
+                    }
                     className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
                   />
                 </div>
@@ -368,12 +443,14 @@ const handleMedicalSubmit = async () => {
                   <input
                     type="text"
                     value={form.address2}
-                    onChange={(e)=> setForm({ ...form, address2: e.target.value})}
+                    onChange={(e) =>
+                      setForm({ ...form, address2: e.target.value })
+                    }
                     className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
                   />
                 </div>
               </div>
-              
+
               <div className="grid grid-cols-1 md:grid-cols-1 gap-6">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -382,7 +459,7 @@ const handleMedicalSubmit = async () => {
                   <input
                     type="text"
                     value={form.city}
-                    onChange={(e)=> setForm({ ...form, city: e.target.value})}
+                    onChange={(e) => setForm({ ...form, city: e.target.value })}
                     className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
                   />
                 </div>
@@ -396,7 +473,9 @@ const handleMedicalSubmit = async () => {
                   <input
                     type="text"
                     value={form.country}
-                    onChange={(e)=> setForm({ ...form, country: e.target.value})}
+                    onChange={(e) =>
+                      setForm({ ...form, country: e.target.value })
+                    }
                     className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
                   />
                 </div>
@@ -410,7 +489,7 @@ const handleMedicalSubmit = async () => {
                   <input
                     type="text"
                     value={form.zip}
-                    onChange={(e)=> setForm({ ...form, zip: e.target.value})}
+                    onChange={(e) => setForm({ ...form, zip: e.target.value })}
                     className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
                   />
                 </div>
@@ -424,7 +503,10 @@ const handleMedicalSubmit = async () => {
               {/* Disease Checkboxes */}
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 {diseases.map((condition) => (
-                  <label key={condition} className="flex items-center space-x-2 text-sm">
+                  <label
+                    key={condition}
+                    className="flex items-center space-x-2 text-sm"
+                  >
                     <input
                       type="checkbox"
                       checked={form.medicalHistory.includes(condition)}
@@ -499,7 +581,6 @@ const handleMedicalSubmit = async () => {
             </div>
           )}
 
-
           {/* Save Button */}
           <div className="mt-8 text-center">
             {activeTab === "basic" && (
@@ -528,12 +609,14 @@ const handleMedicalSubmit = async () => {
                 >
                   Save Medical History
                 </button>
-                
+
                 <button
                   onClick={() => generatePatientPDF(patientId)}
                   disabled={!patientId}
                   className={`${
-                    patientId ? "bg-gray-700 hover:bg-gray-800" : "bg-gray-400 cursor-not-allowed"
+                    patientId
+                      ? "bg-gray-700 hover:bg-gray-800"
+                      : "bg-gray-400 cursor-not-allowed"
                   } text-white px-6 py-2 rounded-md transition-colors text-sm font-medium`}
                 >
                   Download PDF
@@ -544,17 +627,17 @@ const handleMedicalSubmit = async () => {
         </div>
       </div>
       <ToastContainer
-      position="top-right"
-      autoClose={3000}
-      hideProgressBar={false}
-      newestOnTop={false}
-      closeOnClick
-      rtl={false}
-      pauseOnFocusLoss
-      draggable
-      pauseOnHover
-      theme="colored"
-    />
+        position="top-right"
+        autoClose={3000}
+        hideProgressBar={false}
+        newestOnTop={false}
+        closeOnClick
+        rtl={false}
+        pauseOnFocusLoss
+        draggable
+        pauseOnHover
+        theme="colored"
+      />
     </div>
   );
 };

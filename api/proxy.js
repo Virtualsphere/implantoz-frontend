@@ -1,5 +1,3 @@
-// api/proxy.js
-
 export const config = {
   api: {
     bodyParser: false, // ✅ Prevent Next.js from consuming the body
@@ -10,12 +8,20 @@ export default async function handler(req, res) {
   try {
     const BACKEND_API = "http://103.118.16.129:5009" || "http://localhost:5000";
 
-    const path = req.url.replace(/^\/(api|auth)/, "");
-    const backendUrl = `${BACKEND_API}${
-      req.url.startsWith("/auth") ? "/auth" + path : "/api" + path
-    }`;
+    // ✅ Fix: also handle /files path, not just /api or /auth
+    const path = req.url.replace(/^\/(api|auth|files)/, "");
 
-    // ✅ Fix: Add duplex: "half" when forwarding raw body
+    // ✅ Adjusted URL building logic to handle /files correctly
+    let backendUrl;
+    if (req.url.startsWith("/auth")) {
+      backendUrl = `${BACKEND_API}/auth${path}`;
+    } else if (req.url.startsWith("/files")) {
+      backendUrl = `${BACKEND_API}/files${path}`;
+    } else {
+      backendUrl = `${BACKEND_API}/api${path}`;
+    }
+
+    // ✅ Keep the rest of your logic exactly the same
     const fetchOptions = {
       method: req.method,
       headers: {
@@ -42,7 +48,7 @@ export default async function handler(req, res) {
     } else {
       const contentDisposition =
         response.headers.get("content-disposition") ||
-        "inline; filename=file.pdf";
+        "inline; filename=file";
 
       res.setHeader("Content-Type", contentType || "application/octet-stream");
       res.setHeader("Content-Disposition", contentDisposition);

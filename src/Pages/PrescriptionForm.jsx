@@ -28,7 +28,10 @@ const PrescriptionForm = () => {
   const [prescriptionId, setPrescriptionId] = useState(null);
   const [patientQuery, setPatientQuery] = useState("");
   const [patientResults, setPatientResults] = useState([]);
-  const [showSuggestions, setShowSuggestions] = useState(false);
+  const [doctorQuery, setDoctorQuery] = useState("");
+  const [doctorResults, setDoctorResults] = useState([]);
+  const [showPatientSuggestions, setShowPatientSuggestions] = useState(false);
+  const [showDoctorSuggestions, setShowDoctorSuggestions] = useState(false);
 
   // store files as objects: { name, file: File, preview: string (blob:... or data:image/...) }
   const [investigationFiles, setInvestigationFiles] = useState([]);
@@ -72,30 +75,51 @@ const PrescriptionForm = () => {
   }, [suggestions]);
 
   useEffect(() => {
-    const fetchPatients = async () => {
-      if (patientQuery.trim().length < 2) {
-        setPatientResults([]);
-        return;
-      }
-
-      try {
-        const res = await fetch(
-          `${API_BASE}/api/getPatientName/search?q=${patientQuery}`
-        );
-        const data = await res.json();
-        setPatientResults(data.suggestions || []);
-        setShowSuggestions(true);
-      } catch (err) {
-        console.error("Error fetching patients:", err);
-      }
-    };
-
-    const debounce = setTimeout(fetchPatients, 300);
-    return () => clearTimeout(debounce);
+        const fetchPatients = async () => {
+          if (patientQuery.trim().length < 2) {
+            setPatientResults([]);
+            return;
+          }
+    
+          try {
+            const res = await fetch(
+              `${API_BASE}/api/getPatientName/search?q=${patientQuery}`
+            );
+            const data = await res.json();
+            setPatientResults(data.suggestions || []);
+            setShowPatientSuggestions(true);
+          } catch (err) {
+            console.error("Error fetching patients:", err);
+          }
+        };
+    
+        const debounce = setTimeout(fetchPatients, 300);
+        return () => clearTimeout(debounce);
   }, [patientQuery]);
+    
+  useEffect(()=> {
+        const fetchDoctors= async()=>{
+          if(doctorQuery.trim().length < 2){
+            setDoctorResults([]);
+            return;
+          }
+          try{
+            const res= await fetch(
+              `${API_BASE}/auth/get-name/search?q=${doctorQuery}`
+            )
+          const data = await res.json();
+            setDoctorResults(data.suggestions || []);
+            setShowDoctorSuggestions(true);
+          } catch (err) {
+            console.error("Error fetching patients:", err);
+          }
+        }
+        const debounce = setTimeout(fetchDoctors, 300);
+        return () => clearTimeout(debounce);
+  }, [doctorQuery]);
 
   const [form, setForm] = useState({
-    doctorName: "",
+    doctorId: "",
     patientId: "",
     patientName: "",
     teethSpecification: "",
@@ -258,7 +282,7 @@ const PrescriptionForm = () => {
 
       if (hasFiles) {
         body = new FormData();
-        body.append("doctorName", form.doctorName);
+        body.append("doctorId", form.doctorId);
         body.append("patientId", form.patientId);
         body.append("patientName", form.patientName);
         body.append("teethSpecification", form.teethSpecification || "");
@@ -296,7 +320,7 @@ const PrescriptionForm = () => {
         }
       } else {
         const payload = {
-          doctorName: form.doctorName,
+          doctorId: form.doctorId,
           patientId: form.patientId,
           patientName: form.patientName,
           teethSpecification: form.teethSpecification || "",
@@ -561,44 +585,43 @@ const PrescriptionForm = () => {
                 </label>
                 <div className="relative">
                   <input
-                    type="text"
-                    value={patientQuery || form.patientName}
-                    onChange={(e) => {
-                      setPatientQuery(e.target.value);
-                      setForm({ ...form, patientName: e.target.value });
-                    }}
-                    onFocus={() => setShowSuggestions(true)}
-                    onBlur={() =>
-                      setTimeout(() => setShowSuggestions(false), 200)
-                    }
-                    placeholder="Enter patient name"
-                    className="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-1 focus:ring-blue-500"
-                  />
-
-                  {showSuggestions && patientResults.length > 0 && (
-                    <div className="absolute z-10 bg-white border rounded shadow-md w-full max-h-48 overflow-y-auto">
-                      {patientResults.map((p) => (
-                        <div
-                          key={p.id}
-                          className="px-3 py-2 hover:bg-gray-100 cursor-pointer"
-                          onClick={() => {
-                            setForm((prev) => ({
-                              ...prev,
-                              patientName: p.name,
-                              patientId: p.patient_id,
-                            }));
-                            setPatientQuery(p.name);
-                            setShowSuggestions(false);
-                          }}
-                        >
-                          <p className="font-medium">{p.name}</p>
-                          <p className="text-sm text-gray-500">{p.email}</p>
-                          <p className="text-sm text-gray-500">{p.mobile}</p>
-                          <p className="text-sm text-gray-500">{p.patient_id}</p>
+                        type="text"
+                        value={patientQuery || form.patientName}
+                        onChange={(e) => {
+                          setPatientQuery(e.target.value);
+                          setForm({ ...form, patientName: e.target.value });
+                        }}
+                        onFocus={() => setShowPatientSuggestions(true)}
+                        onBlur={() =>
+                          setTimeout(() => setShowPatientSuggestions(false), 200)
+                        }
+                        placeholder="Enter patient name"
+                        className="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                      />
+                      {showPatientSuggestions && patientResults.length > 0 && (
+                        <div className="absolute z-10 bg-white border rounded shadow-md w-full max-h-48 overflow-y-auto">
+                          {patientResults.map((p) => (
+                            <div
+                              key={p.id}
+                              className="px-3 py-2 hover:bg-gray-100 cursor-pointer"
+                              onMouseDown={() => {
+                                setForm((prev) => ({
+                                  ...prev,
+                                  patientName: p.name,
+                                  patientId: p.patient_id,
+                                }));
+                                setPatientQuery(p.name);
+                                setShowPatientSuggestions(false);
+                              }}
+                            >
+                              <p className="font-medium">{p.name}</p>
+                              <p className="text-sm text-gray-500">{p.email}</p>
+                              <p className="text-sm text-gray-500">{p.mobile}</p>
+                              <p className="text-sm text-gray-500">{p.patient_id}</p>
+                            </div>
+                          ))}
                         </div>
-                      ))}
-                    </div>
-                  )}
+                      )}
                 </div>
               </div>
               <div>
@@ -618,14 +641,46 @@ const PrescriptionForm = () => {
                 <label className="block text-sm text-gray-700 mb-2">
                   Doctor Name
                 </label>
-                <input
-                  type="text"
-                  value={form.doctorName}
-                  onChange={(e) =>
-                    setForm({ ...form, doctorName: e.target.value })
-                  }
-                  className="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-1 focus:ring-blue-500"
-                />
+                <div className="relative">
+                  <input
+                        type="text"
+                        value={doctorQuery || form.doctorId}
+                        onChange={(e) => {
+                          setDoctorQuery(e.target.value);
+                          setForm({ ...form, doctorId: e.target.value });
+                        }}
+                        onFocus={() => setShowDoctorSuggestions(true)}
+                        onBlur={() =>
+                          setTimeout(() => setShowDoctorSuggestions(false), 200)
+                        }
+                        placeholder="Enter patient name"
+                        className="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                      />
+
+                      {showDoctorSuggestions && doctorResults.length > 0 && (
+                        <div className="absolute z-10 bg-white border rounded shadow-md w-full max-h-48 overflow-y-auto">
+                          {doctorResults.map((p) => (
+                            <div
+                              key={p.id}
+                              className="px-3 py-2 hover:bg-gray-100 cursor-pointer"
+                              onMouseDown={() => {
+                                setForm((prev) => ({
+                                  ...prev,
+                                  doctorId: p.doctor_id,
+                                }));
+                                setDoctorQuery(p.name);
+                                setShowDoctorSuggestions(false);
+                              }}
+                            >
+                              <p className="font-medium">{p.name}</p>
+                              <p className="text-sm text-gray-500">{p.email}</p>
+                              <p className="text-sm text-gray-500">{p.mobile}</p>
+                              <p className="text-sm text-gray-500">{p.doctor_id}</p>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                </div>
               </div>
             </div>
             <div>

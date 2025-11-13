@@ -209,6 +209,14 @@ const Patient = () => {
                           Download
                         </button>
                       </td>
+                      <td className="px-6 py-3 text-sm text-gray-700">
+                        <button
+                          onClick={() => navigate("/patient/form", { state: { patientId: p.patient_id } })}
+                          className="px-4 py-2 text-sm font-medium bg-blue-500 hover:bg-blue-600 text-white rounded"
+                        >
+                          Update
+                        </button>
+                      </td>
                     </tr>
                   ))
                 )}

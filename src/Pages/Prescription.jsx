@@ -144,7 +144,7 @@ const Prescription = () => {
               className="flex items-center space-x-1 bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded text-sm"
             >
               <span>+</span>
-              <span>New Prescription</span>
+              <span>New Patient</span>
             </button>
           </div>
           </div>
@@ -177,7 +177,8 @@ const Prescription = () => {
                   <th className="px-6 py-3 text-left text-sm font-medium text-gray-900 border-r border-gray-300">Patient Name</th>
                   <th className="px-6 py-3 text-left text-sm font-medium text-gray-900 border-r border-gray-300">Doctor Name</th>
                   <th className="px-6 py-3 text-left text-sm font-medium text-gray-900 border-r border-gray-300">Consultation ID</th>
-                  <th className="px-6 py-3 text-left text-sm font-medium text-gray-900"></th>
+                  <th className="px-6 py-3 text-left text-sm font-medium text-gray-900 border-r border-gray-300"></th>
+                  <th className="px-6 py-3 text-left text-sm font-medium text-gray-900 border-r border-gray-300"></th>
                 </tr>
               </thead>
               <tbody className="bg-white">
@@ -206,6 +207,14 @@ const Prescription = () => {
                           className="px-5 py-2 text-sm font-medium bg-green-500 hover:bg-green-600 text-white rounded"
                         >
                           Download
+                        </button>
+                      </td>
+                      <td className="px-6 py-3 text-sm text-gray-700">
+                        <button
+                          onClick={() => navigate("/invoicing/form", { state: { prescriptionId: p.prescription_id } })}
+                          className="px-4 py-2 text-sm font-medium bg-blue-500 hover:bg-blue-600 text-white rounded"
+                        >
+                          Create Invoice
                         </button>
                       </td>
                     </tr>

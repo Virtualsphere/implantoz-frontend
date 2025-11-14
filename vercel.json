@@ -1,15 +1,15 @@
 {
   "rewrites": [
     {
+      "source": "/api/files/(.*)",
+      "destination": "http://103.118.16.129:5009/files/$1"
+    },
+    {
       "source": "/api/(.*)",
       "destination": "/api/proxy"
     },
     {
       "source": "/auth/(.*)",
-      "destination": "/api/proxy"
-    },
-    {
-      "source": "/files/(.*)",
       "destination": "/api/proxy"
     },
     {

@@ -7,7 +7,7 @@ import { API_BASE } from "../config/api";
 
 const PatientForm = () => {
   const location = useLocation();
-  const { patientId } = location.state || {};
+  const { initialPatientId  } = location.state || {};
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState("basic");
   const [diseases, setDiseases] = useState([
@@ -44,7 +44,7 @@ const PatientForm = () => {
     otherHistory: "",
   });
   const [message, setMessage] = useState("");
-  const [setPatientId] = useState(null);
+  const [patientId, setPatientId] = useState(initialPatientId);
   const handleCheckboxChange = (condition) => {
     setForm((prev) => {
       if (prev.medicalHistory.includes(condition)) {

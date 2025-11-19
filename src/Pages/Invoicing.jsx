@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { API_BASE } from "../config/api";
+import { ToastContainer, toast } from "react-toastify";
+import "react-toastify/dist/ReactToastify.css";
 
 const Invoicing = () => {
   const navigate = useNavigate();
@@ -28,6 +30,21 @@ const Invoicing = () => {
       alert("Failed to fetch invoice PDF");
     }
   };
+
+  const sendMessage= async (invoiceId)=>{
+    if(!invoiceId) return toast.error("Invoice ID missing");
+    try {
+      const response = await fetch(`${API_BASE}/api/send-message/${invoiceId}`);
+      if (response.ok){
+        toast.success("Message send Successfully");
+      }else{
+        toast.error("Failed to Send invoice PDF");
+      }
+    } catch (err) {
+      console.error(err);
+      toast.error("Failed to Send invoice PDF");
+    }
+  }
 
   useEffect(() => {
     const fetchInvoices = async () => {
@@ -187,7 +204,7 @@ const Invoicing = () => {
                   <th className="px-6 py-3 text-left text-sm font-medium text-gray-900 border-r border-gray-300">Created</th>
                   <th className="px-6 py-3 text-left text-sm font-medium text-gray-900 border-r border-gray-300">Due</th>
                   <th className="px-6 py-3 text-left text-sm font-medium text-gray-900 border-r border-gray-300">Status</th>
-                  <th className="px-6 py-3 text-left text-sm font-medium text-gray-900"></th>
+                  <th className="px-6 py-3 text-left text-sm font-medium text-gray-900 border-r border-gray-300"></th>
                 </tr>
               </thead>
               <tbody className="bg-white">
@@ -219,6 +236,14 @@ const Invoicing = () => {
                           className="px-5 py-2 text-sm font-medium bg-green-500 hover:bg-green-600 text-white rounded"
                         >
                           Download
+                        </button>
+                      </td>
+                      <td className="px-6 py-3 text-sm text-gray-700">
+                        <button
+                          onClick={() => sendMessage(inv.invoice_id)}
+                          className="px-5 py-2 text-sm font-medium bg-blue-500 hover:bg-blue-600 text-white rounded"
+                        >
+                          Send
                         </button>
                       </td>
                     </tr>
@@ -253,6 +278,7 @@ const Invoicing = () => {
           </div>
         </div>
       </div>
+      <ToastContainer position="top-right" autoClose={3000} theme="colored" />
     </div>
   );
 };

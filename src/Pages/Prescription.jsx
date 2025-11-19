@@ -2,6 +2,8 @@ import React, { useEffect, useState, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { useReactToPrint } from "react-to-print";
 import { API_BASE } from "../config/api";
+import { ToastContainer, toast } from "react-toastify";
+import "react-toastify/dist/ReactToastify.css";
 
 const Prescription = () => {
   const pdfRef = useRef();
@@ -36,6 +38,21 @@ const Prescription = () => {
       alert("Failed to generate preview PDF");
     }
   };
+
+  const sendMessage= async (prescriptionId)=>{
+      if(!prescriptionId) return toast.error("Invoice ID missing");
+      try {
+        const response = await fetch(`${API_BASE}/api/send-pdf-message/${prescriptionId}`);
+        if (response.ok){
+          toast.success("Message send Successfully");
+        }else{
+          toast.error("Failed to Send prescription PDF");
+        }
+      } catch (err) {
+        console.error(err);
+        toast.error("Failed to Send prescription PDF");
+      }
+    }
 
   useEffect(() => {
     const fetchPrescriptions = async () => {
@@ -144,7 +161,7 @@ const Prescription = () => {
               className="flex items-center space-x-1 bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded text-sm"
             >
               <span>+</span>
-              <span>New Patient</span>
+              <span>New Prescription</span>
             </button>
           </div>
           </div>
@@ -217,6 +234,14 @@ const Prescription = () => {
                           Create Invoice
                         </button>
                       </td>
+                      <td className="px-6 py-3 text-sm text-gray-700">
+                        <button
+                          onClick={() => sendMessage(p.prescription_id)}
+                          className="px-5 py-2 text-sm font-medium bg-yellow-500 hover:bg-yellow-600 text-white rounded"
+                        >
+                          Send
+                        </button>
+                      </td>
                     </tr>
                   ))
                 )}
@@ -249,6 +274,7 @@ const Prescription = () => {
           </div>
         </div>
       </div>
+      <ToastContainer position="top-right" autoClose={3000} theme="colored" />
     </div>
   );
 };

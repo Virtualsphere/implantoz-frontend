@@ -16,11 +16,16 @@ const Header = () => {
     degree: "",
     registeration_number: "",
   });
-  const [image, setImage] = useState(null);
-  const [preview, setPreview] = useState(null);
+
+  // Separate states for logo and footer
+  const [logo, setLogo] = useState(null);
+  const [footer, setFooter] = useState(null);
+  const [logoPreview, setLogoPreview] = useState(null);
+  const [footerPreview, setFooterPreview] = useState(null);
+
   const [loading, setLoading] = useState(false);
 
-  // 🧠 Fetch existing header data once on mount
+  // Fetch existing header data
   useEffect(() => {
     const fetchHeader = async () => {
       try {
@@ -29,7 +34,6 @@ const Header = () => {
         const data = await res.json();
         if (data && data[0]) {
           setForm({
-            hospitalName: data[0].hospital_name || "",
             address: data[0].address || "",
             email: data[0].email || "",
             phone: data[0].number || "",
@@ -40,8 +44,15 @@ const Header = () => {
             degree: data[0].degree || "",
             registeration_number: data[0].registeration_number || "",
           });
+
+          // Set logo preview if exists
           if (data[0].image) {
-            setPreview(`${API_BASE}/uploads/${data[0].image}`);
+            setLogoPreview(`${API_BASE}/uploads/${data[0].image}`);
+          }
+
+          // Set footer preview if exists
+          if (data[0].footer) {
+            setFooterPreview(`${API_BASE}/uploads/${data[0].footer}`);
           }
         }
       } catch (error) {
@@ -56,11 +67,19 @@ const Header = () => {
     setForm({ ...form, [e.target.name]: e.target.value });
   };
 
-  const handleImageChange = (e) => {
+  const handleLogoChange = (e) => {
     const file = e.target.files[0];
     if (file) {
-      setImage(file);
-      setPreview(URL.createObjectURL(file));
+      setLogo(file);
+      setLogoPreview(URL.createObjectURL(file));
+    }
+  };
+
+  const handleFooterChange = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      setFooter(file);
+      setFooterPreview(URL.createObjectURL(file));
     }
   };
 
@@ -69,14 +88,16 @@ const Header = () => {
       setLoading(true);
       const formData = new FormData();
 
-      // Append only provided (non-empty) fields
+      // Append non-empty form fields
       Object.entries(form).forEach(([key, value]) => {
         if (value && value.trim() !== "") {
           formData.append(key, value);
         }
       });
 
-      if (image) formData.append("files", image); // 👈 name must match your multer field
+      // Append logo/footer if provided
+      if (logo) formData.append("logo", logo);
+      if (footer) formData.append("footer", footer);
 
       const res = await fetch(`${API_BASE}/api/header`, {
         method: "POST",
@@ -105,9 +126,52 @@ const Header = () => {
           PDF HEADER CONFIGURATION
         </h2>
 
-        {/* Fields */}
+        {/* Footer Upload */}
+        <div className="mb-4">
+          <label className="block text-gray-700 text-sm mb-2">
+            Upload Footer
+          </label>
+          <input
+            type="file"
+            accept="image/*"
+            onChange={handleFooterChange}
+            className="w-full text-sm text-gray-700"
+          />
+          {footerPreview && (
+            <div className="mt-3 flex justify-center">
+              <img
+                src={footerPreview}
+                alt="Footer Preview"
+                className="h-24 object-contain border"
+              />
+            </div>
+          )}
+        </div>
+
+        {/* Logo Upload */}
+        <div className="mb-4">
+          <label className="block text-gray-700 text-sm mb-2">
+            Upload Logo
+          </label>
+          <input
+            type="file"
+            accept="image/*"
+            onChange={handleLogoChange}
+            className="w-full text-sm text-gray-700"
+          />
+          {logoPreview && (
+            <div className="mt-3 flex justify-center">
+              <img
+                src={logoPreview}
+                alt="Logo Preview"
+                className="h-24 w-24 object-cover rounded-full border"
+              />
+            </div>
+          )}
+        </div>
+
+        {/* Form Fields */}
         {[
-          { label: "Hospital Name", name: "hospitalName", type: "text" },
           { label: "Email", name: "email", type: "email" },
           { label: "Phone", name: "phone", type: "text" },
           { label: "Address", name: "address", type: "text" },
@@ -136,28 +200,6 @@ const Header = () => {
             />
           </div>
         ))}
-
-        {/* Image Upload */}
-        <div className="mb-4">
-          <label className="block text-gray-700 text-sm mb-2">
-            Upload Logo / Image
-          </label>
-          <input
-            type="file"
-            accept="image/*"
-            onChange={handleImageChange}
-            className="w-full text-sm text-gray-700"
-          />
-          {preview && (
-            <div className="mt-3 flex justify-center">
-              <img
-                src={preview}
-                alt="Preview"
-                className="h-24 w-24 object-cover rounded-full border"
-              />
-            </div>
-          )}
-        </div>
 
         {/* Submit Button */}
         <button

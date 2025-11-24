@@ -1654,9 +1654,9 @@ const handleRemoveChiefComplaint = (index) => {
                               <option value="1-1-0">1-1-0</option>
                               <option value="1-1-1">1-1-1</option>
                               <option value="0-1-0">0-1-0</option>
-                              <option value="0-0-1">1-0-1</option>
+                              <option value="1-0-1">1-0-1</option>
                               <option value="0-0-1">0-0-1</option>
-                              <option value="0-0-1">0-1-1</option>
+                              <option value="0-1-1">0-1-1</option>
                             </select>
                           </td>
                           <td className="px-4 py-2">

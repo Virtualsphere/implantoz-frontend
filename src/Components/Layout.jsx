@@ -212,6 +212,15 @@ const Layout = () => {
                   >
                     Template
                   </button>
+                  <button
+                    onClick={() => {
+                      navigate("/clinic/code");
+                      setShowSettingsBox(false);
+                    }}
+                    className="w-full text-left px-3 py-1.5 text-sm hover:bg-gray-100 rounded"
+                  >
+                    Clinic Code
+                  </button>
                 </div>
               )}
             </div>

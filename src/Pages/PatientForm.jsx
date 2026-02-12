@@ -90,49 +90,98 @@ const PatientForm = () => {
   };
 
   useEffect(() => {
-    const fetchMedicalHistory = async () => {
-      if (!patientId) return; // Only run when patientId is known
+    setPatientId(passedPatientId || "");
+  }, [passedPatientId]);
 
-      try {
-        const res = await fetch(
-          `${API_BASE}/api/patients/${patientId}/medical-history`
-        );
-        const data = await res.json();
+  useEffect(() => {
+    if (!passedPatientId) {
+      setPatientId("");
+      setForm({
+        firstName: "",
+        lastName: "",
+        emailId: "",
+        mobile: "",
+        dob: "",
+        age: "",
+        bloodGroup: "",
+        gender: "",
+        address1: "",
+        address2: "",
+        city: "",
+        country: "",
+        zip: "",
+        medicalHistory: [],
+        otherHistory: "",
+      });
+    }
+  }, [passedPatientId]);
 
-        if (res.ok && data.success) {
-          if (data.data && data.data.length > 0) {
-            // Map database records to your form state
-            const diseaseList = data.data.map((item) => item.disease_name);
-            const combinedHistory = data.data
-              .map((item) => `${item.description}`)
-              .join("\n");
+  useEffect(() => {
+  const fetchPatientData = async () => {
+    if (!patientId) return;
 
-            setForm((prev) => ({
-              ...prev,
-              medicalHistory: diseaseList,
-              otherHistory: combinedHistory,
-            }));
+    try {
+      const res = await fetch(
+        `${API_BASE}/api/patients/${patientId}/patient-history`
+      );
+      const result = await res.json();
 
-            setDiseases((prev) => {
-              const newOnes = data.data
-                .map((item) => item.disease_name)
-                .filter((name) => !prev.includes(name));
-              return [...prev, ...newOnes];
-            });
-
-            toast.info("Loaded existing medical history.");
-          }
-        } else {
-          toast.warn(data.message || "No medical history found.");
-        }
-      } catch (error) {
-        console.error(error);
-        toast.error("Failed to fetch medical history.");
+      if (!res.ok || !result.success) {
+        toast.warn(result.message || "No patient data found.");
+        return;
       }
-    };
 
-    fetchMedicalHistory();
-  }, [patientId]);
+      const patient =
+        result.data.patientData.patientRows[0] || {};
+      const address =
+        result.data.addressData.addressRows[0] || {};
+      const history =
+        result.data.medicalHistoryData.historyRows || [];
+
+      setForm((prev) => ({
+        ...prev,
+
+        // 🟢 BASIC INFO
+        firstName: patient.first_name || "",
+        lastName: patient.last_name || "",
+        emailId: patient.email || "",
+        mobile: patient.mobile || "",
+        dob: patient.dob || "",
+        age: patient.age || "",
+        gender:
+          patient.gender
+            ? patient.gender.charAt(0).toUpperCase() +
+              patient.gender.slice(1)
+            : "",
+
+        // 🟢 ADDRESS
+        address1: address.address_line1 || "",
+        address2: address.address_line2 || "",
+        city: address.city || "",
+        country: address.country || "",
+        zip: address.postal_code || "",
+
+        // 🟢 MEDICAL HISTORY
+        medicalHistory: history.map((h) => h.disease_name),
+        otherHistory: history.map((h) => h.description).join("\n"),
+      }));
+
+      // 🟢 Ensure diseases list contains DB diseases
+      setDiseases((prev) => {
+        const dbDiseases = history.map((h) => h.disease_name);
+        const newOnes = dbDiseases.filter((d) => !prev.includes(d));
+        return [...prev, ...newOnes];
+      });
+
+      toast.info("Patient data loaded successfully.");
+    } catch (error) {
+      console.error(error);
+      toast.error("Failed to fetch patient data.");
+    }
+  };
+
+  fetchPatientData();
+}, [patientId]);
 
   const handleBasicSubmit = async () => {
     try {

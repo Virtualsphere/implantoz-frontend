@@ -161,15 +161,6 @@ const Invoicing = () => {
                 <span>⬇</span>
                 <span>Export</span>
               </button>
-
-              {/* New Invoice */}
-              <button
-                onClick={() => navigate("/invoicing/form")}
-                className="flex items-center space-x-1 bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded text-sm"
-              >
-                <span>+</span>
-                <span>New Invoice</span>
-              </button>
             </div>
           </div>
 

@@ -19,6 +19,7 @@ import SetPass from "./Pages/SetPass";
 import AppointmentForm from "./Pages/AppointmentForm";
 import Header from "./Pages/Header";
 import Template from "./Pages/Template";
+import ClinicCode from "./Pages/ClinicCode";
 const App = () => {
   return (
     <Router>
@@ -37,6 +38,7 @@ const App = () => {
           <Route path="appointment/form" element={<AppointmentForm />} />
           <Route path="header/form" element={<Header />} />
           <Route path="template" element={<Template />} />
+          <Route path="clinic/code" element={<ClinicCode />} />
         </Route>
         <Route index element={<Signin />} />
         <Route path="signup" element={<Signup />} />

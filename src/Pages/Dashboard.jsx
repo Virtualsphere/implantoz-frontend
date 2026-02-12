@@ -66,11 +66,6 @@ const Dashboard = () => {
                 <p className="text-3xl font-bold text-blue-900">{totals.patients}</p>
               </div>
 
-              <div className="bg-green-100 border border-green-300 rounded-xl p-6 shadow-sm">
-                <h3 className="text-lg font-medium text-green-800 mb-2">Drugs</h3>
-                <p className="text-3xl font-bold text-green-900">{totals.drugs}</p>
-              </div>
-
               <div className="bg-yellow-100 border border-yellow-300 rounded-xl p-6 shadow-sm">
                 <h3 className="text-lg font-medium text-yellow-800 mb-2">Invoices</h3>
                 <p className="text-3xl font-bold text-yellow-900">{totals.invoices}</p>

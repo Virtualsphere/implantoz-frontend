@@ -2139,14 +2139,23 @@ const PrescriptionForm = () => {
                                 "14 Days",
                               ].includes(med.duration) && (
                                 <input
-                                  type="text"
-                                  value={med.duration}
+                                  type="number"
+                                  min="1"
+                                  value={med.duration.replace(/\D/g, "")}
                                   onChange={(e) => {
                                     const updated = [...form.medication];
                                     updated[index].duration = e.target.value;
                                     setForm({ ...form, medication: updated });
                                   }}
-                                  placeholder="Custom duration..."
+                                  onBlur={(e) => {
+                                    const value = e.target.value;
+                                    if (value) {
+                                      const updated = [...form.medication];
+                                      updated[index].duration = `${value} Days`;
+                                      setForm({ ...form, medication: updated });
+                                    }
+                                  }}
+                                  placeholder="Enter days"
                                   className="w-full border border-gray-300 rounded px-2 py-1 focus:outline-none focus:ring-1 focus:ring-blue-500"
                                 />
                               )}

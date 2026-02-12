@@ -139,7 +139,7 @@ const Patient = () => {
 
               {/* New Patient */}
               <button
-                onClick={() => navigate("/patient/form")}
+                onClick={() => navigate("/patient/form", { state: null })}
                 className="flex items-center space-x-1 bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded text-sm"
               >
                 <span>+</span>

@@ -6,6 +6,77 @@ import { useNavigate } from "react-router-dom";
 import { API_BASE } from "../config/api";
 import Webcam from "react-webcam";
 
+// Quick Type Section Component
+const QuickTypeSection = React.memo(({ 
+  tab, 
+  quickTypeInputs, 
+  setQuickTypeInputs,
+  quickTypes,
+  loadingQuickTypes,
+  handleAddQuickType,
+  handleDeleteQuickType,
+  handleUseQuickType 
+}) => (
+  <div className="mt-6 border-t pt-4">
+    <label className="block text-sm font-medium text-gray-700 mb-2">
+      Quick Types
+    </label>
+    
+    {/* Add Quick Type Input */}
+    <div className="flex gap-2 mb-3">
+      <input
+        type="text"
+        key={`quick-input-${tab}`} // Add a stable key
+        value={quickTypeInputs[tab] || ""}
+        onChange={(e) => setQuickTypeInputs(prev => ({
+          ...prev,
+          [tab]: e.target.value
+        }))}
+        placeholder={`Add quick type for ${tab}`}
+        className="flex-1 border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-1 focus:ring-blue-500"
+      />
+      <button
+        onClick={() => handleAddQuickType(tab)}
+        className="bg-blue-500 hover:bg-blue-600 text-white px-4 rounded"
+      >
+        Add Quick Type
+      </button>
+    </div>
+    
+    {/* Display Quick Types */}
+    <div className="mt-4">
+      <label className="block text-sm text-gray-700 mb-2">
+        Quick Type Suggestions
+      </label>
+      {loadingQuickTypes ? (
+        <p className="text-sm text-gray-500">Loading quick types...</p>
+      ) : quickTypes[tab]?.length > 0 ? (
+        <div className="flex flex-wrap gap-2">
+          {quickTypes[tab].map((item) => (
+            <div key={item.id} className="flex items-center gap-1">
+              <button
+                onClick={() => handleUseQuickType(tab, item.quick_type)}
+                className="border border-gray-300 px-3 py-1 rounded text-sm bg-gray-50 hover:bg-blue-50 hover:border-blue-300 transition-colors"
+              >
+                {item.quick_type}
+              </button>
+              <button
+                onClick={() => handleDeleteQuickType(tab, item.id)}
+                className="text-red-500 hover:text-red-700 text-xs"
+                title="Delete"
+              >
+                ×
+              </button>
+            </div>
+          ))}
+        </div>
+      ) : (
+        <p className="text-sm text-gray-400">No quick types yet. Add some above.</p>
+      )}
+    </div>
+  </div>
+));
+
 const PrescriptionForm = () => {
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState("Chief Complaint");
@@ -39,89 +110,218 @@ const PrescriptionForm = () => {
   const [showPatientSuggestions, setShowPatientSuggestions] = useState(false);
   const [showDoctorSuggestions, setShowDoctorSuggestions] = useState(false);
 
+  // Quick type states
+  const [quickTypeInputs, setQuickTypeInputs] = useState({
+    "Chief Complaint": "",
+    "Examination": "",
+    "Investigation / Finding": "",
+    "Diagnosis": "",
+    "Treatment Plan": "",
+    "Procedure": "",
+    "Advice Instructions": ""
+  });
+  
+  const [quickTypes, setQuickTypes] = useState({
+    "Chief Complaint": [],
+    "Examination": [],
+    "Investigation / Finding": [],
+    "Diagnosis": [],
+    "Treatment Plan": [],
+    "Procedure": [],
+    "Advice Instructions": []
+  });
+  
+  const [loadingQuickTypes, setLoadingQuickTypes] = useState(false);
+
   // store files as objects: { name, file: File, preview: string (blob:... or data:image/...) }
   const [investigationFiles, setInvestigationFiles] = useState([]);
   const [procedureFiles, setProcedureFiles] = useState([]);
+  const [examinationFiles, setExaminationFiles]= useState([]);
 
   const [showInvestigationCamera, setShowInvestigationCamera] = useState(false);
   const [showProcedureCamera, setShowProcedureCamera] = useState(false);
+  const [showExaminationCamera, setShowExaminationCamera]= useState(false);
   const investigationCamRef = useRef(null);
   const procedureCamRef = useRef(null);
+  const examinationCamRef= useRef(null);
   const [investigationFacingMode, setInvestigationFacingMode] =
     useState("environment");
   const [procedureFacingMode, setProcedureFacingMode] = useState("environment");
+  const [examinationFacingMode, setExaminationFacingMode]= useState("environment");
 
-  const [suggestions, setSuggestions] = useState({
-    examination: [],
-    investigation: [],
-    diagnosis: [],
-    adviceInstruction: [],
-    treatmentPlan: [],
-    procedure: [],
-  });
+  const [clinics, setClinics] = useState([]);
+  const [isLoadingClinics, setIsLoadingClinics] = useState(false);
+
+  // Fetch quick types when tab changes
+  useEffect(() => {
+    fetchQuickTypesForTab(activeTab);
+  }, [activeTab]);
+
+  // Function to fetch quick types for a specific tab
+  const fetchQuickTypesForTab = async (tab) => {
+    setLoadingQuickTypes(true);
+    try {
+      const res = await fetch(
+        `${API_BASE}/api/quick-type?tab=${encodeURIComponent(tab)}`
+      );
+      const data = await res.json();
+      
+      if (res.ok && data.success) {
+        setQuickTypes(prev => ({
+          ...prev,
+          [tab]: data.data || []
+        }));
+      }
+    } catch (err) {
+      console.error(`Error fetching quick types for ${tab}:`, err);
+      toast.error(`Failed to load quick types for ${tab}`);
+    } finally {
+      setLoadingQuickTypes(false);
+    }
+  };
+
+  // Function to add quick type
+  const handleAddQuickType = async (tab) => {
+    const inputValue = quickTypeInputs[tab]?.trim();
+    if (!inputValue) {
+      toast.error("Please enter a quick type value");
+      return;
+    }
+
+    try {
+      const res = await fetch(`${API_BASE}/api/quick-type`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          quickTypes: [{
+            tab: tab,
+            value: inputValue
+          }]
+        }),
+      });
+
+      const data = await res.json();
+
+      if (res.ok) {
+        toast.success("Quick type added successfully");
+        // Clear input
+        setQuickTypeInputs(prev => ({
+          ...prev,
+          [tab]: ""
+        }));
+        // Refresh quick types for this tab
+        fetchQuickTypesForTab(tab);
+      } else {
+        toast.error(data.message || "Failed to add quick type");
+      }
+    } catch (err) {
+      console.error("Error adding quick type:", err);
+      toast.error("Failed to add quick type");
+    }
+  };
+
+  // Function to delete quick type
+  const handleDeleteQuickType = async (tab, id) => {
+    try {
+      const res = await fetch(`${API_BASE}/api/quick-type/${id}`, {
+        method: "DELETE",
+      });
+
+      const data = await res.json();
+
+      if (res.ok) {
+        toast.success("Quick type deleted successfully");
+        // Remove from local state
+        setQuickTypes(prev => ({
+          ...prev,
+          [tab]: prev[tab].filter(item => item.id !== id)
+        }));
+      } else {
+        toast.error(data.message || "Failed to delete quick type");
+      }
+    } catch (err) {
+      console.error("Error deleting quick type:", err);
+      toast.error("Failed to delete quick type");
+    }
+  };
+
+  // Function to use quick type
+  const handleUseQuickType = (tab, value) => {
+    setQuickTypeInputs(prev => ({
+      ...prev,
+      [tab]: value
+    }));
+    switch (tab) {
+      case "Chief Complaint":
+        setChiefComplaintInput(value);
+        break;
+      case "Examination":
+        setExaminationInput(value);
+        break;
+      case "Investigation / Finding":
+        setInvestigationInput(value);
+        break;
+      case "Diagnosis":
+        setDiagnosisInput(value);
+        break;
+      case "Treatment Plan":
+        setTreatmentPlanInput(value);
+        break;
+      case "Procedure":
+        setProcedureInput(value);
+        break;
+      case "Advice Instructions":
+        setAdviceInstructionInput(value);
+        break;
+      default:
+        break;
+    }
+  };
 
   useEffect(() => {
-    const saved = JSON.parse(localStorage.getItem("suggestions") || "{}");
+    const fetchPatients = async () => {
+      if (patientQuery.trim().length < 2) {
+        setPatientResults([]);
+        return;
+      }
 
-    // Ensure every expected key always exists
-    const normalized = {
-      examination: saved.examination || [],
-      investigation: saved.investigation || [],
-      diagnosis: saved.diagnosis || [],
-      adviceInstruction: saved.adviceInstruction || [],
-      treatmentPlan: saved.treatmentPlan || [],
-      procedure: saved.procedure || [],
+      try {
+        const res = await fetch(
+          `${API_BASE}/api/getPatientName/search?q=${patientQuery}`
+        );
+        const data = await res.json();
+        setPatientResults(data.suggestions || []);
+        setShowPatientSuggestions(true);
+      } catch (err) {
+        console.error("Error fetching patients:", err);
+      }
     };
 
-    setSuggestions(normalized);
-  }, []);
-
-  useEffect(() => {
-    localStorage.setItem("suggestions", JSON.stringify(suggestions));
-  }, [suggestions]);
-
-  useEffect(() => {
-        const fetchPatients = async () => {
-          if (patientQuery.trim().length < 2) {
-            setPatientResults([]);
-            return;
-          }
-    
-          try {
-            const res = await fetch(
-              `${API_BASE}/api/getPatientName/search?q=${patientQuery}`
-            );
-            const data = await res.json();
-            setPatientResults(data.suggestions || []);
-            setShowPatientSuggestions(true);
-          } catch (err) {
-            console.error("Error fetching patients:", err);
-          }
-        };
-    
-        const debounce = setTimeout(fetchPatients, 300);
-        return () => clearTimeout(debounce);
+    const debounce = setTimeout(fetchPatients, 300);
+    return () => clearTimeout(debounce);
   }, [patientQuery]);
-    
-  useEffect(()=> {
-        const fetchDoctors= async()=>{
-          if(doctorQuery.trim().length < 2){
-            setDoctorResults([]);
-            return;
-          }
-          try{
-            const res= await fetch(
-              `${API_BASE}/auth/get-name/search?q=${doctorQuery}`
-            )
-          const data = await res.json();
-            setDoctorResults(data.suggestions || []);
-            setShowDoctorSuggestions(true);
-          } catch (err) {
-            console.error("Error fetching patients:", err);
-          }
-        }
-        const debounce = setTimeout(fetchDoctors, 300);
-        return () => clearTimeout(debounce);
+
+  useEffect(() => {
+    const fetchDoctors = async () => {
+      if (doctorQuery.trim().length < 2) {
+        setDoctorResults([]);
+        return;
+      }
+      try {
+        const res = await fetch(
+          `${API_BASE}/auth/get-name/search?q=${doctorQuery}`
+        );
+        const data = await res.json();
+        setDoctorResults(data.suggestions || []);
+        setShowDoctorSuggestions(true);
+      } catch (err) {
+        console.error("Error fetching patients:", err);
+      }
+    };
+    const debounce = setTimeout(fetchDoctors, 300);
+    return () => clearTimeout(debounce);
   }, [doctorQuery]);
 
   const [form, setForm] = useState({
@@ -129,6 +329,7 @@ const PrescriptionForm = () => {
     patientId: "",
     patientName: "",
     teethSpecification: "",
+    clinicCode: "",
     chiefComplaint: [],
     examination: [],
     investigation: [],
@@ -155,7 +356,6 @@ const PrescriptionForm = () => {
     const pdfBlob = new Blob([blob], { type: "application/pdf" });
     const url = window.URL.createObjectURL(pdfBlob);
     window.open(url);
-    // revoke after some time to be safe
     setTimeout(() => window.URL.revokeObjectURL(url), 60000);
   };
 
@@ -170,10 +370,8 @@ const PrescriptionForm = () => {
     "Advice Instructions": "/api/prescription/advice-instruction",
   };
 
-  // Helper to convert dataURL to File (used if any capture produces base64)
   const dataURLtoFile = (dataurl, filename) => {
     if (!dataurl) return null;
-    // dataurl = "data:[<mediatype>][;base64],<data>"
     const arr = dataurl.split(",");
     const mimeMatch = arr[0].match(/:(.*?);/);
     const mime = mimeMatch ? mimeMatch[1] : "image/jpeg";
@@ -184,6 +382,47 @@ const PrescriptionForm = () => {
       u8arr[n] = bstr.charCodeAt(n);
     }
     return new File([u8arr], filename, { type: mime });
+  };
+
+  const handleExaminationFileChange= (e) =>{
+    const files= Array.from(e.target.files || []);
+    const mapped= files.map((file)=>({
+      name: file.name,
+      file,
+      preview: URL.createObjectURL(file),
+    }));
+    setExaminationFiles((prev) => [...prev, ...mapped]);
+  }
+
+  const handleRemoveExaminationFile = (index) => {
+    setExaminationFiles((prev) => {
+      const toRemove = prev[index];
+      if (toRemove?.preview?.startsWith("blob:")) {
+        try {
+          URL.revokeObjectURL(toRemove.preview);
+        } catch (e) {}
+      }
+      const next = prev.filter((_, i) => i !== index);
+      return next;
+    });
+  };
+
+  const captureExaminationPhoto = async () => {
+    if (!examinationCamRef.current) return;
+    const imageSrc = examinationCamRef.current.getScreenshot(); // dataURL
+    try {
+      // create File from dataURL
+      const file = dataURLtoFile(imageSrc, `examination-${Date.now()}.jpg`);
+      const preview = imageSrc;
+      setExaminationFiles((prev) => [
+        ...prev,
+        { name: file.name, file, preview },
+      ]);
+      setShowExaminationCamera(false);
+    } catch (err) {
+      console.error("Failed to capture examination photo", err);
+      toast.error("Capture failed");
+    }
   };
 
   // ====== Investigation Upload & Camera ======
@@ -270,6 +509,29 @@ const PrescriptionForm = () => {
     }
   };
 
+  useEffect(() => {
+    const fetchClinics = async () => {
+      setIsLoadingClinics(true);
+      try {
+        const res = await fetch(`${API_BASE}/api/clinic/code`);
+        const data = await res.json();
+
+        if (data.success && data.data?.result) {
+          setClinics(data.data.result);
+        } else {
+          toast.error("Failed to fetch clinic data");
+        }
+      } catch (err) {
+        console.error("Error fetching clinics:", err);
+        toast.error("Error loading clinic data");
+      } finally {
+        setIsLoadingClinics(false);
+      }
+    };
+
+    fetchClinics();
+  }, []);
+
   // When you submit, convert current files to FormData properly
   const handleSubmit = async (e) => {
     try {
@@ -281,7 +543,7 @@ const PrescriptionForm = () => {
 
       const method = prescriptionId ? "PUT" : "POST";
       const hasFiles =
-        activeTab === "Investigation / Finding" || activeTab === "Procedure";
+        activeTab === "Investigation / Finding" || activeTab === "Procedure" || activeTab== "Examination";
 
       let body;
       let headers = {};
@@ -292,6 +554,7 @@ const PrescriptionForm = () => {
         body.append("patientId", form.patientId);
         body.append("patientName", form.patientName);
         body.append("teethSpecification", form.teethSpecification || "");
+        body.append("clinicCode", form.clinicCode || "");
         if (prescriptionId) body.append("prescriptionId", prescriptionId);
 
         if (activeTab === "Investigation / Finding") {
@@ -311,7 +574,21 @@ const PrescriptionForm = () => {
                   );
             if (fileToAppend) body.append("files", fileToAppend);
           });
-        } else if (activeTab === "Procedure") {
+        }
+        else if (activeTab === "Examination") {
+          body.append("examination", JSON.stringify(form.examination || []));
+          examinationFiles.forEach((f) => {
+            const fileToAppend =
+              f.file instanceof File
+                ? f.file
+                : dataURLtoFile(
+                    f.preview,
+                    f.name || `examination-${Date.now()}.jpg`
+                  );
+            if (fileToAppend) body.append("files", fileToAppend);
+          });
+        }
+        else if (activeTab === "Procedure") {
           body.append("procedure", JSON.stringify(form.procedure || []));
           procedureFiles.forEach((f) => {
             const fileToAppend =
@@ -336,9 +613,6 @@ const PrescriptionForm = () => {
         switch (activeTab) {
           case "Chief Complaint":
             payload.complaints = form.chiefComplaint;
-            break;
-          case "Examination":
-            payload.examination = form.examination;
             break;
           case "Diagnosis":
             payload.diagnosis = form.diagnosis;
@@ -379,6 +653,7 @@ const PrescriptionForm = () => {
         // Reset file states (but keep previews cleaned)
         setInvestigationFiles([]);
         setProcedureFiles([]);
+        setExaminationFiles([]);
 
         // Clear inputs by tab
         switch (activeTab) {
@@ -470,112 +745,96 @@ const PrescriptionForm = () => {
   };
 
   // EXAMINATION
-const handleAddExamination = () => {
-  if (!examinationInput.trim() && !examinationTeeth.trim()) return;
+  const handleAddExamination = () => {
+    if (!examinationInput.trim() && !examinationTeeth.trim()) return;
 
-  const newItem = {
-    examination: examinationInput.trim(),
-    teethSpecification: examinationTeeth.trim(),
+    const newItem = {
+      examination: examinationInput.trim(),
+      teethSpecification: examinationTeeth.trim(),
+    };
+
+    const newItems = [...examinations, newItem];
+    setExaminations(newItems);
+    setForm((prev) => ({ ...prev, examination: newItems }));
+
+    setExaminationInput("");
+    setExaminationTeeth("");
   };
 
-  const newItems = [...examinations, newItem];
-  setExaminations(newItems);
-  setForm((prev) => ({ ...prev, examination: newItems }));
+  // INVESTIGATION
+  const handleAddInvestigation = () => {
+    if (!investigationInput.trim() && !investigationTeeth.trim()) return;
 
-  setExaminationInput("");
-  setExaminationTeeth("");
-};
+    const newItem = {
+      investigation: investigationInput.trim(),
+      teethSpecification: investigationTeeth.trim(),
+    };
 
-// INVESTIGATION
-const handleAddInvestigation = () => {
-  if (!investigationInput.trim() && !investigationTeeth.trim()) return;
+    const newItems = [...investigations, newItem];
+    setInvestigations(newItems);
+    setForm((prev) => ({ ...prev, investigation: newItems }));
 
-  const newItem = {
-    investigation: investigationInput.trim(),
-    teethSpecification: investigationTeeth.trim(),
+    setInvestigationInput("");
+    setInvestigationTeeth("");
   };
 
-  const newItems = [...investigations, newItem];
-  setInvestigations(newItems);
-  setForm((prev) => ({ ...prev, investigation: newItems }));
+  // DIAGNOSIS
+  const handleAddDiagnosis = () => {
+    if (!diagnosisInput.trim() && !diagnosisTeeth.trim()) return;
 
-  setInvestigationInput("");
-  setInvestigationTeeth("");
-};
+    const newItem = {
+      diagnosis: diagnosisInput.trim(),
+      teethSpecification: diagnosisTeeth.trim(),
+    };
 
-// DIAGNOSIS
-const handleAddDiagnosis = () => {
-  if (!diagnosisInput.trim() && !diagnosisTeeth.trim()) return;
+    const newItems = [...diagnoses, newItem];
+    setDiagnoses(newItems);
+    setForm((prev) => ({ ...prev, diagnosis: newItems }));
 
-  const newItem = {
-    diagnosis: diagnosisInput.trim(),
-    teethSpecification: diagnosisTeeth.trim(),
+    setDiagnosisInput("");
+    setDiagnosisTeeth("");
   };
 
-  const newItems = [...diagnoses, newItem];
-  setDiagnoses(newItems);
-  setForm((prev) => ({ ...prev, diagnosis: newItems }));
+  // PROCEDURE
+  const handleAddProcedure = () => {
+    if (!procedureInput.trim() && !procedureTeeth.trim()) return;
 
-  setDiagnosisInput("");
-  setDiagnosisTeeth("");
-};
+    const newItem = {
+      procedure: procedureInput.trim(),
+      teethSpecification: procedureTeeth.trim(),
+    };
 
-// PROCEDURE
-const handleAddProcedure = () => {
-  if (!procedureInput.trim() && !procedureTeeth.trim()) return;
+    const newItems = [...procedures, newItem];
+    setProcedures(newItems);
+    setForm((prev) => ({ ...prev, procedure: newItems }));
 
-  const newItem = {
-    procedure: procedureInput.trim(),
-    teethSpecification: procedureTeeth.trim(),
+    setProcedureInput("");
+    setProcedureTeeth("");
   };
 
-  const newItems = [...procedures, newItem];
-  setProcedures(newItems);
-  setForm((prev) => ({ ...prev, procedure: newItems }));
+  const handleAddChiefComplaint = () => {
+    const trimmedInput = chiefComplaintInput.trim();
+    if (!trimmedInput) return;
 
-  setProcedureInput("");
-  setProcedureTeeth("");
-};
+    const newItems = [...chiefComplaints, trimmedInput];
+    setChiefComplaints(newItems);
+    setForm((prev) => ({ ...prev, chiefComplaint: newItems }));
+    setChiefComplaintInput("");
+  };
 
-const handleAddChiefComplaint = () => {
-  const trimmedInput = chiefComplaintInput.trim();
-  if (!trimmedInput) return;
-
-  const newItems = [...chiefComplaints, trimmedInput];
-  setChiefComplaints(newItems);
-  setForm((prev) => ({ ...prev, chiefComplaint: newItems }));
-  setChiefComplaintInput("");
-
-  // Safely update suggestions
-  setSuggestions((prev) => ({
-    ...prev,
-    chiefComplaint: Array.isArray(prev.chiefComplaint) && prev.chiefComplaint.includes(trimmedInput)
-      ? prev.chiefComplaint
-      : [...(prev.chiefComplaint || []), trimmedInput],
-  }));
-};
-
-const handleRemoveChiefComplaint = (index) => {
-  const newItems = chiefComplaints.filter((_, i) => i !== index);
-  setChiefComplaints(newItems);
-  setForm((prev) => ({ ...prev, chiefComplaint: newItems }));
-};
+  const handleRemoveChiefComplaint = (index) => {
+    const newItems = chiefComplaints.filter((_, i) => i !== index);
+    setChiefComplaints(newItems);
+    setForm((prev) => ({ ...prev, chiefComplaint: newItems }));
+  };
 
   const handleAdd = (input, setInput, items, setItems, key) => {
     if (input.trim()) {
       const newItem = input.trim();
       const newItems = [...items, newItem];
       setItems(newItems);
-
       setForm((prev) => ({ ...prev, [key]: newItems }));
       setInput("");
-
-      setSuggestions((prev) => ({
-        ...prev,
-        [key]: prev[key].includes(newItem)
-          ? prev[key]
-          : [...prev[key], newItem],
-      }));
     }
   };
 
@@ -591,255 +850,324 @@ const handleRemoveChiefComplaint = (index) => {
   };
 
   const handleLoadForUpdate = async () => {
-  if (!prescriptionId) {
-    toast.error("No prescription found to update");
-    return;
-  }
+    if (!prescriptionId) {
+      toast.error("No prescription found to update");
+      return;
+    }
 
-  try {
-    const res = await fetch(
-      `${API_BASE}/api/prescription-update-data/${prescriptionId}`
-    );
-    const data = await res.json();
+    try {
+      const res = await fetch(
+        `${API_BASE}/api/prescription-update-data/${prescriptionId}`
+      );
+      const data = await res.json();
 
-    if (!res.ok)
-      throw new Error(data.message || "Failed to fetch prescription data");
+      if (!res.ok)
+        throw new Error(data.message || "Failed to fetch prescription data");
 
-    // --- MAP ALL DATA ARRAYS PROPERLY ---
+      // --- MAP ALL DATA ARRAYS PROPERLY ---
 
-    const fetchedChiefComplaints = Array.isArray(data.complaint)
-      ? data.complaint.map((c) => c.complaint?.[0] || "")
-      : [];
+      const fetchedChiefComplaints = Array.isArray(data.complaint)
+        ? data.complaint.map((c) => c.complaint?.[0] || "")
+        : [];
 
-    const fetchedExaminations = Array.isArray(data.examination)
-      ? data.examination.map((item) => ({
-          examination: item.examination?.[0] || "",
-          teethSpecification: item.teeth_number || "",
-        }))
-      : [];
+      const fetchedExaminations = Array.isArray(data.examination)
+        ? data.examination.map((item) => ({
+            examination: item.examination?.[0] || "",
+            teethSpecification: item.teeth_number || "",
+          }))
+        : [];
 
-    const fetchedInvestigations = Array.isArray(data.investigation)
-      ? data.investigation.map((item) => ({
-          investigation: item.investigation_type?.[0] || "",
-          teethSpecification: item.teeth_number || "",
-        }))
-      : [];
+      const fetchedInvestigations = Array.isArray(data.investigation)
+        ? data.investigation.map((item) => ({
+            investigation: item.investigation_type?.[0] || "",
+            teethSpecification: item.teeth_number || "",
+          }))
+        : [];
 
-    const fetchedDiagnoses = Array.isArray(data.diagnosis)
-      ? data.diagnosis.map((item) => ({
-          diagnosis: item.diagnosis?.[0] || "",
-          teethSpecification: item.teeth_number || "",
-        }))
-      : [];
+      const fetchedDiagnoses = Array.isArray(data.diagnosis)
+        ? data.diagnosis.map((item) => ({
+            diagnosis: item.diagnosis?.[0] || "",
+            teethSpecification: item.teeth_number || "",
+          }))
+        : [];
 
-    const fetchedTreatmentPlans = Array.isArray(data.treatmentPlan)
-      ? data.treatmentPlan.map((item) => ({
-          teethSpecification: item.teeth_number || "",
-          procedure: item.procedure?.[0] || "",
-          date: item.date || "",
-          amount: item.amount || "",
-        }))
-      : [];
+      const fetchedTreatmentPlans = Array.isArray(data.treatmentPlan)
+        ? data.treatmentPlan.map((item) => ({
+            teethSpecification: item.teeth_number || "",
+            procedure: item.procedure?.[0] || "",
+            date: item.date || "",
+            amount: item.amount || "",
+          }))
+        : [];
 
-    const fetchedProcedures = Array.isArray(data.procedure)
-      ? data.procedure.map((item) => ({
-          procedure: item.procedures?.[0] || "",
-          teethSpecification: item.teeth_number || "",
-        }))
-      : [];
+      const fetchedProcedures = Array.isArray(data.procedure)
+        ? data.procedure.map((item) => ({
+            procedure: item.procedures?.[0] || "",
+            teethSpecification: item.teeth_number || "",
+          }))
+        : [];
 
-    const fetchedAdvice = Array.isArray(data.adviceInstruction)
-      ? data.adviceInstruction.map((a) => a.instructions?.[0] || "")
-      : [];
+      const fetchedAdvice = Array.isArray(data.adviceInstruction)
+        ? data.adviceInstruction.map((a) => a.instructions?.[0] || "")
+        : [];
 
-    const fetchedMedications = Array.isArray(data.medication)
-      ? data.medication.map((m) => ({
-          drugName: m.drugName || "",
-          frequency: m.frequency || "",
-          duration: m.duration || "",
-          instruction: m.instruction || "",
-        }))
-      : [];
+      const fetchedMedications = Array.isArray(data.medication)
+        ? data.medication.map((m) => ({
+            drugName: m.drugName || "",
+            frequency: m.frequency || "",
+            duration: m.duration || "",
+            instruction: m.instruction || "",
+          }))
+        : [];
 
-    // --- UPDATE FORM STATE ---
 
-    setForm((prev) => ({
-      ...prev,
-      chiefComplaint: fetchedChiefComplaints,
-      examination: fetchedExaminations,
-      investigation: fetchedInvestigations,
-      diagnosis: fetchedDiagnoses,
-      treatmentPlan: fetchedTreatmentPlans,
-      procedure: fetchedProcedures,
-      adviceInstruction: fetchedAdvice,
-      medication: fetchedMedications,
-    }));
+      setForm((prev) => ({
+        ...prev,
+        chiefComplaint: fetchedChiefComplaints,
+        examination: fetchedExaminations,
+        investigation: fetchedInvestigations,
+        diagnosis: fetchedDiagnoses,
+        treatmentPlan: fetchedTreatmentPlans,
+        procedure: fetchedProcedures,
+        adviceInstruction: fetchedAdvice,
+        medication: fetchedMedications,
+        clinicCode: data.clinicCode || "",
+      }));
 
-    // --- UPDATE INDIVIDUAL UI STATES ---
+      // --- UPDATE INDIVIDUAL UI STATES ---
 
-    setChiefComplaints(fetchedChiefComplaints);
-    setExaminations(fetchedExaminations);
-    setInvestigations(fetchedInvestigations);
-    setDiagnoses(fetchedDiagnoses);
-    setTreatmentPlans(fetchedTreatmentPlans);
-    setProcedures(fetchedProcedures);
-    setAdviceInstructions(fetchedAdvice);
+      setChiefComplaints(fetchedChiefComplaints);
+      setExaminations(fetchedExaminations);
+      setInvestigations(fetchedInvestigations);
+      setDiagnoses(fetchedDiagnoses);
+      setTreatmentPlans(fetchedTreatmentPlans);
+      setProcedures(fetchedProcedures);
+      setAdviceInstructions(fetchedAdvice);
 
-    toast.success("Prescription data loaded for editing!");
-  } catch (err) {
-    console.error(err);
-    toast.error(err.message || "Failed to load prescription data");
-  }
-};
+      toast.success("Prescription data loaded for editing!");
+    } catch (err) {
+      console.error(err);
+      toast.error(err.message || "Failed to load prescription data");
+    }
+  };
 
   const renderTabContent = () => {
     switch (activeTab) {
       case "Chief Complaint":
-  return (
-    <div className="space-y-4">
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-        {/* Patient Name */}
-        <div>
-          <label className="block text-sm text-gray-700 mb-2">Patient Name</label>
-          <div className="relative">
-            <input
-              type="text"
-              value={patientQuery || form.patientName}
-              onChange={(e) => {
-                setPatientQuery(e.target.value);
-                setForm({ ...form, patientName: e.target.value });
-              }}
-              onFocus={() => setShowPatientSuggestions(true)}
-              onBlur={() =>
-                setTimeout(() => setShowPatientSuggestions(false), 200)
-              }
-              placeholder="Enter patient name"
-              className="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-1 focus:ring-blue-500"
-            />
-            {showPatientSuggestions && patientResults.length > 0 && (
-              <div className="absolute z-10 bg-white border rounded shadow-md w-full max-h-48 overflow-y-auto">
-                {patientResults.map((p) => (
-                  <div
-                    key={p.id}
-                    className="px-3 py-2 hover:bg-gray-100 cursor-pointer"
-                    onMouseDown={() => {
-                      setForm((prev) => ({
-                        ...prev,
-                        patientName: p.name,
-                        patientId: p.patient_id,
-                      }));
-                      setPatientQuery(p.name);
-                      setShowPatientSuggestions(false);
+        return (
+          <div className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+              {/* Patient Name */}
+              <div>
+                <label className="block text-sm text-gray-700 mb-2">
+                  Patient Name
+                </label>
+                <div className="relative">
+                  <input
+                    type="text"
+                    value={patientQuery || form.patientName}
+                    onChange={(e) => {
+                      setPatientQuery(e.target.value);
+                      setForm({ ...form, patientName: e.target.value });
                     }}
-                  >
-                    <p className="font-medium">{p.name}</p>
-                    <p className="text-sm text-gray-500">{p.email}</p>
-                    <p className="text-sm text-gray-500">{p.mobile}</p>
-                    <p className="text-sm text-gray-500">{p.patient_id}</p>
-                  </div>
-                ))}
+                    onFocus={() => setShowPatientSuggestions(true)}
+                    onBlur={() =>
+                      setTimeout(() => setShowPatientSuggestions(false), 200)
+                    }
+                    placeholder="Enter patient name"
+                    className="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                  />
+                  {showPatientSuggestions && patientResults.length > 0 && (
+                    <div className="absolute z-10 bg-white border rounded shadow-md w-full max-h-48 overflow-y-auto">
+                      {patientResults.map((p) => (
+                        <div
+                          key={p.id}
+                          className="px-3 py-2 hover:bg-gray-100 cursor-pointer"
+                          onMouseDown={() => {
+                            setForm((prev) => ({
+                              ...prev,
+                              patientName: p.name,
+                              patientId: p.patient_id,
+                            }));
+                            setPatientQuery(p.name);
+                            setShowPatientSuggestions(false);
+                          }}
+                        >
+                          <p className="font-medium">{p.name}</p>
+                          <p className="text-sm text-gray-500">{p.email}</p>
+                          <p className="text-sm text-gray-500">{p.mobile}</p>
+                          <p className="text-sm text-gray-500">
+                            {p.patient_id}
+                          </p>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
               </div>
-            )}
-          </div>
-        </div>
 
-        {/* Patient ID */}
-        <div>
-          <label className="block text-sm text-gray-700 mb-2">Patient Id</label>
-          <input
-            type="text"
-            value={form.patientId}
-            onChange={(e) =>
-              setForm({ ...form, patientId: e.target.value })
-            }
-            className="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-1 focus:ring-blue-500"
-          />
-        </div>
+              {/* Patient ID */}
+              <div>
+                <label className="block text-sm text-gray-700 mb-2">
+                  Patient Id
+                </label>
+                <input
+                  type="text"
+                  value={form.patientId}
+                  onChange={(e) =>
+                    setForm({ ...form, patientId: e.target.value })
+                  }
+                  className="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                />
+              </div>
 
-        {/* Doctor Name */}
-        <div>
-          <label className="block text-sm text-gray-700 mb-2">Doctor Name</label>
-          <div className="relative">
-            <input
-              type="text"
-              value={doctorQuery || form.doctorId}
-              onChange={(e) => {
-                setDoctorQuery(e.target.value);
-                setForm({ ...form, doctorId: e.target.value });
-              }}
-              onFocus={() => setShowDoctorSuggestions(true)}
-              onBlur={() =>
-                setTimeout(() => setShowDoctorSuggestions(false), 200)
-              }
-              placeholder="Enter doctor name"
-              className="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-1 focus:ring-blue-500"
-            />
-            {showDoctorSuggestions && doctorResults.length > 0 && (
-              <div className="absolute z-10 bg-white border rounded shadow-md w-full max-h-48 overflow-y-auto">
-                {doctorResults.map((p) => (
-                  <div
-                    key={p.id}
-                    className="px-3 py-2 hover:bg-gray-100 cursor-pointer"
-                    onMouseDown={() => {
-                      setForm((prev) => ({
-                        ...prev,
-                        doctorId: p.doctor_id,
-                      }));
-                      setDoctorQuery(p.name);
-                      setShowDoctorSuggestions(false);
+              {/* Doctor Name */}
+              <div>
+                <label className="block text-sm text-gray-700 mb-2">
+                  Doctor Name
+                </label>
+                <div className="relative">
+                  <input
+                    type="text"
+                    value={doctorQuery || form.doctorId}
+                    onChange={(e) => {
+                      setDoctorQuery(e.target.value);
+                      setForm({ ...form, doctorId: e.target.value });
                     }}
-                  >
-                    <p className="font-medium">{p.name}</p>
-                    <p className="text-sm text-gray-500">{p.email}</p>
-                    <p className="text-sm text-gray-500">{p.mobile}</p>
-                    <p className="text-sm text-gray-500">{p.doctor_id}</p>
-                  </div>
-                ))}
+                    onFocus={() => setShowDoctorSuggestions(true)}
+                    onBlur={() =>
+                      setTimeout(() => setShowDoctorSuggestions(false), 200)
+                    }
+                    placeholder="Enter doctor name"
+                    className="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                  />
+                  {showDoctorSuggestions && doctorResults.length > 0 && (
+                    <div className="absolute z-10 bg-white border rounded shadow-md w-full max-h-48 overflow-y-auto">
+                      {doctorResults.map((p) => (
+                        <div
+                          key={p.id}
+                          className="px-3 py-2 hover:bg-gray-100 cursor-pointer"
+                          onMouseDown={() => {
+                            setForm((prev) => ({
+                              ...prev,
+                              doctorId: p.doctor_id,
+                            }));
+                            setDoctorQuery(p.name);
+                            setShowDoctorSuggestions(false);
+                          }}
+                        >
+                          <p className="font-medium">{p.name}</p>
+                          <p className="text-sm text-gray-500">{p.email}</p>
+                          <p className="text-sm text-gray-500">{p.mobile}</p>
+                          <p className="text-sm text-gray-500">{p.doctor_id}</p>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
               </div>
-            )}
-          </div>
-        </div>
-      </div>
+              {/* Clinic Code Selector - NEW */}
+              <div>
+                <label className="block text-sm text-gray-700 mb-2">
+                  Select Clinic
+                </label>
+                <select
+                  value={form.clinicCode}
+                  onChange={(e) => {
+                    const selectedClinicCode = e.target.value;
+                    setForm({ ...form, clinicCode: selectedClinicCode });
+                  }}
+                  className="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                  disabled={isLoadingClinics}
+                >
+                  <option value="">Select a clinic</option>
+                  {clinics.map((clinic) => (
+                    <option key={clinic.id} value={clinic.clinic_code}>
+                      {clinic.clinic_name} - {clinic.clinic_code}
+                    </option>
+                  ))}
+                </select>
+                {isLoadingClinics && (
+                  <p className="text-xs text-gray-500 mt-1">
+                    Loading clinics...
+                  </p>
+                )}
+                {form.clinicCode && (
+                  <div className="mt-2 text-xs text-gray-600 bg-gray-50 p-2 rounded">
+                    <p>
+                      Selected Clinic Code: <strong>{form.clinicCode}</strong>
+                    </p>
+                    {clinics.find((c) => c.clinic_code === form.clinicCode)
+                      ?.address && (
+                      <p className="mt-1">
+                        Address:{" "}
+                        {
+                          clinics.find((c) => c.clinic_code === form.clinicCode)
+                            .address
+                        }
+                      </p>
+                    )}
+                  </div>
+                )}
+              </div>
+            </div>
 
-      {/* Chief Complaints Input + List */}
-      <div>
-        <label className="block text-sm text-gray-700 mb-2">Add Chief Complaint</label>
-        <div className="flex gap-2 mb-2">
-          <input
-            type="text"
-            value={chiefComplaintInput}
-            onChange={(e) => setChiefComplaintInput(e.target.value)}
-            placeholder="Enter chief complaint"
-            className="flex-1 border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-1 focus:ring-blue-500"
-          />
-          <button
-            type="button"
-            onClick={handleAddChiefComplaint}
-            className="bg-green-500 hover:bg-green-600 text-white px-4 rounded"
-          >
-            Add
-          </button>
-        </div>
-
-        {chiefComplaints.length > 0 && (
-          <ul className="border border-gray-200 rounded p-2 space-y-1 bg-gray-50">
-            {chiefComplaints.map((item, index) => (
-              <li key={index} className="flex justify-between items-center">
-                <span>{item}</span>
+            {/* Chief Complaints Input + List */}
+            <div>
+              <label className="block text-sm text-gray-700 mb-2">
+                Add Chief Complaint
+              </label>
+              <div className="flex gap-2 mb-2">
+                <input
+                  type="text"
+                  value={chiefComplaintInput}
+                  onChange={(e) => setChiefComplaintInput(e.target.value)}
+                  placeholder="Enter chief complaint"
+                  className="flex-1 border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                />
                 <button
                   type="button"
-                  onClick={() => handleRemoveChiefComplaint(index)}
-                  className="text-red-500 hover:text-red-700"
+                  onClick={handleAddChiefComplaint}
+                  className="bg-green-500 hover:bg-green-600 text-white px-4 rounded"
                 >
-                  ×
+                  Add
                 </button>
-              </li>
-            ))}
-          </ul>
-        )}
-      </div>
-    </div>
-  );
+              </div>
+
+              {chiefComplaints.length > 0 && (
+                <ul className="border border-gray-200 rounded p-2 space-y-1 bg-gray-50">
+                  {chiefComplaints.map((item, index) => (
+                    <li
+                      key={index}
+                      className="flex justify-between items-center"
+                    >
+                      <span>{item}</span>
+                      <button
+                        type="button"
+                        onClick={() => handleRemoveChiefComplaint(index)}
+                        className="text-red-500 hover:text-red-700"
+                      >
+                        ×
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+
+            {/* Quick Type Section */}
+            <QuickTypeSection 
+              tab="Chief Complaint"
+              quickTypeInputs={quickTypeInputs}
+              setQuickTypeInputs={setQuickTypeInputs}
+              quickTypes={quickTypes}
+              loadingQuickTypes={loadingQuickTypes}
+              handleAddQuickType={handleAddQuickType}
+              handleDeleteQuickType={handleDeleteQuickType}
+              handleUseQuickType={handleUseQuickType}
+            />
+          </div>
+        );
 
       case "Examination":
         return (
@@ -851,12 +1179,12 @@ const handleRemoveChiefComplaint = (index) => {
                 </label>
                 <div className="flex items-center space-x-2 relative">
                   <img
-                      src={ToothIcon}
-                      alt="tooth"
-                      className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400"
-                    />
+                    src={ToothIcon}
+                    alt="tooth"
+                    className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400"
+                  />
                   <input
-                    type="text"
+                    type="number"
                     value={examinationTeeth}
                     onChange={(e) => setExaminationTeeth(e.target.value)}
                     className="w-full pl-10 border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-1 focus:ring-blue-500"
@@ -865,7 +1193,9 @@ const handleRemoveChiefComplaint = (index) => {
               </div>
 
               <div>
-                <label className="block text-sm text-gray-700 mb-2">Examination</label>
+                <label className="block text-sm text-gray-700 mb-2">
+                  Examination
+                </label>
                 <div className="flex items-center space-x-2">
                   <input
                     type="text"
@@ -884,10 +1214,102 @@ const handleRemoveChiefComplaint = (index) => {
               </div>
             </div>
 
+             {/* File upload for Examination */}
+            <div className="space-y-4 mt-4">
+              <label className="block text-sm font-medium text-gray-700">
+                Upload Examination Files or Capture Photo
+              </label>
+
+              <div className="flex flex-col sm:flex-row gap-3">
+                <input
+                  type="file"
+                  accept="image/*,application/pdf"
+                  multiple
+                  onChange={handleExaminationFileChange}
+                  className="border p-2 rounded text-sm w-full sm:w-auto"
+                />
+                <button
+                  onClick={() =>
+                    setShowExaminationCamera(!showExaminationCamera)
+                  }
+                  className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
+                >
+                  {showExaminationCamera ? "Close Camera" : "Take Photo"}
+                </button>
+              </div>
+
+              {showExaminationCamera && (
+                <div className="border rounded p-3 bg-gray-50 flex flex-col items-center">
+                  <Webcam
+                    ref={examinationCamRef}
+                    screenshotFormat="image/jpeg"
+                    videoConstraints={{ facingMode: examinationFacingMode }}
+                    className="rounded mb-3"
+                  />
+
+                  <button
+                    onClick={() =>
+                      setExaminationFacingMode((prev) =>
+                        prev === "user" ? "environment" : "user"
+                      )
+                    }
+                    className="bg-gray-600 text-white px-3 py-1 rounded text-sm mb-3"
+                  >
+                    Switch Camera
+                  </button>
+                  <button
+                    onClick={captureExaminationPhoto}
+                    className="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700"
+                  >
+                    Capture Photo
+                  </button>
+                </div>
+              )}
+
+              {/* Previews */}
+              {examinationFiles.length > 0 && (
+                <div className="mt-3">
+                  <p className="text-sm font-medium text-gray-700 mb-2">
+                    Selected Images:
+                  </p>
+                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
+                    {examinationFiles.map((file, i) => (
+                      <div
+                        key={i}
+                        className="relative border rounded overflow-hidden bg-gray-50"
+                      >
+                        {file.preview &&
+                        (file.preview.startsWith("data:image") ||
+                          file.preview.includes("blob:")) ? (
+                          <img
+                            src={file.preview}
+                            alt={file.name}
+                            className="object-cover w-full h-32"
+                          />
+                        ) : (
+                          <div className="flex items-center justify-center h-32 text-xs text-gray-500">
+                            <span>{file.name}</span>
+                          </div>
+                        )}
+                        <button
+                          onClick={() => handleRemoveExaminationFile(i)}
+                          className="absolute top-1 right-1 bg-red-500 text-white text-xs rounded-full px-1"
+                        >
+                          ×
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+
             {examinations.length > 0 && (
               <div>
                 <div className="flex items-center justify-between mb-2">
-                  <span className="text-sm text-gray-700 font-medium">Added Examinations</span>
+                  <span className="text-sm text-gray-700 font-medium">
+                    Added Examinations
+                  </span>
                   <button
                     onClick={() => {
                       setExaminations([]);
@@ -901,16 +1323,24 @@ const handleRemoveChiefComplaint = (index) => {
 
                 <div className="border border-gray-200 rounded p-3 bg-gray-50 space-y-2">
                   {examinations.map((item, index) => (
-                    <div key={index} className="flex items-center justify-between">
+                    <div
+                      key={index}
+                      className="flex items-center justify-between"
+                    >
                       <div className="text-sm">
                         <strong>Examination:</strong> {item.examination} <br />
                         <strong>Teeth:</strong> {item.teethSpecification}
                       </div>
                       <button
                         onClick={() => {
-                          const newItems = examinations.filter((_, i) => i !== index);
+                          const newItems = examinations.filter(
+                            (_, i) => i !== index
+                          );
                           setExaminations(newItems);
-                          setForm((prev) => ({ ...prev, examination: newItems }));
+                          setForm((prev) => ({
+                            ...prev,
+                            examination: newItems,
+                          }));
                         }}
                         className="text-red-500 hover:text-red-700"
                       >
@@ -921,6 +1351,18 @@ const handleRemoveChiefComplaint = (index) => {
                 </div>
               </div>
             )}
+
+            {/* Quick Type Section */}
+            <QuickTypeSection 
+              tab="Examination"
+              quickTypeInputs={quickTypeInputs}
+              setQuickTypeInputs={setQuickTypeInputs}
+              quickTypes={quickTypes}
+              loadingQuickTypes={loadingQuickTypes}
+              handleAddQuickType={handleAddQuickType}
+              handleDeleteQuickType={handleDeleteQuickType}
+              handleUseQuickType={handleUseQuickType}
+            />
           </div>
         );
 
@@ -939,7 +1381,7 @@ const handleRemoveChiefComplaint = (index) => {
                     className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400"
                   />
                   <input
-                    type="text"
+                    type="number"
                     value={investigationTeeth}
                     onChange={(e) => setInvestigationTeeth(e.target.value)}
                     className="w-full pl-10 border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-1 focus:ring-blue-500"
@@ -1061,7 +1503,9 @@ const handleRemoveChiefComplaint = (index) => {
             {investigations.length > 0 && (
               <div>
                 <div className="flex items-center justify-between mb-2">
-                  <span className="text-sm text-gray-700 font-medium">Added Investigations</span>
+                  <span className="text-sm text-gray-700 font-medium">
+                    Added Investigations
+                  </span>
                   <button
                     onClick={() => {
                       setInvestigations([]);
@@ -1075,16 +1519,25 @@ const handleRemoveChiefComplaint = (index) => {
 
                 <div className="border border-gray-200 rounded p-3 bg-gray-50 space-y-2">
                   {investigations.map((item, index) => (
-                    <div key={index} className="flex items-center justify-between">
+                    <div
+                      key={index}
+                      className="flex items-center justify-between"
+                    >
                       <div className="text-sm">
-                        <strong>Investigation:</strong> {item.investigation} <br />
+                        <strong>Investigation:</strong> {item.investigation}{" "}
+                        <br />
                         <strong>Teeth:</strong> {item.teethSpecification}
                       </div>
                       <button
                         onClick={() => {
-                          const newItems = investigations.filter((_, i) => i !== index);
+                          const newItems = investigations.filter(
+                            (_, i) => i !== index
+                          );
                           setInvestigations(newItems);
-                          setForm((prev) => ({ ...prev, investigation: newItems }));
+                          setForm((prev) => ({
+                            ...prev,
+                            investigation: newItems,
+                          }));
                         }}
                         className="text-red-500 hover:text-red-700"
                       >
@@ -1096,36 +1549,17 @@ const handleRemoveChiefComplaint = (index) => {
               </div>
             )}
 
-            <div>
-              <label className="block text-sm text-gray-700 mb-2">
-                Quick Type
-              </label>
-              <div className="flex flex-wrap gap-2">
-                {suggestions.investigation.length > 0 ? (
-                  suggestions.investigation.map((item, index) => (
-                    <button
-                      key={index}
-                      onClick={() =>
-                        handleAdd(
-                          item,
-                          setInvestigationInput,
-                          investigations,
-                          setInvestigations,
-                          "investigation"
-                        )
-                      }
-                      className="border border-gray-300 px-3 py-1 rounded text-sm bg-gray-50 hover:bg-blue-50"
-                    >
-                      {item}
-                    </button>
-                  ))
-                ) : (
-                  <span className="text-gray-400 text-sm">
-                    No suggestions yet
-                  </span>
-                )}
-              </div>
-            </div>
+            {/* Quick Type Section */}
+            <QuickTypeSection 
+              tab="Investigation / Finding"
+              quickTypeInputs={quickTypeInputs}
+              setQuickTypeInputs={setQuickTypeInputs}
+              quickTypes={quickTypes}
+              loadingQuickTypes={loadingQuickTypes}
+              handleAddQuickType={handleAddQuickType}
+              handleDeleteQuickType={handleDeleteQuickType}
+              handleUseQuickType={handleUseQuickType}
+            />
           </div>
         );
 
@@ -1144,7 +1578,7 @@ const handleRemoveChiefComplaint = (index) => {
                     className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400"
                   />
                   <input
-                    type="text"
+                    type="number"
                     value={diagnosisTeeth}
                     onChange={(e) => setDiagnosisTeeth(e.target.value)}
                     className="w-full pl-10 border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-1 focus:ring-blue-500"
@@ -1173,74 +1607,62 @@ const handleRemoveChiefComplaint = (index) => {
               </div>
             </div>
 
-             {diagnoses.length > 0 && (
-                <div>
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="text-sm text-gray-700 font-medium">Added Diagnoses</span>
-                    <button
-                      onClick={() => {
-                        setDiagnoses([]);
-                        setForm((prev) => ({ ...prev, diagnosis: [] }));
-                      }}
-                      className="text-red-500 text-sm hover:underline"
-                    >
-                      Clear all
-                    </button>
-                  </div>
-
-                  <div className="border border-gray-200 rounded p-3 bg-gray-50 space-y-2">
-                    {diagnoses.map((item, index) => (
-                      <div key={index} className="flex items-center justify-between">
-                        <div className="text-sm">
-                          <strong>Diagnosis:</strong> {item.diagnosis} <br />
-                          <strong>Teeth:</strong> {item.teethSpecification}
-                        </div>
-                        <button
-                          onClick={() => {
-                            const newItems = diagnoses.filter((_, i) => i !== index);
-                            setDiagnoses(newItems);
-                            setForm((prev) => ({ ...prev, diagnosis: newItems }));
-                          }}
-                          className="text-red-500 hover:text-red-700"
-                        >
-                          ×
-                        </button>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-            <div>
-              <label className="block text-sm text-gray-700 mb-2">
-                Quick Type
-              </label>
-              <div className="flex flex-wrap gap-2">
-                {suggestions.diagnosis.length > 0 ? (
-                  suggestions.diagnosis.map((item, index) => (
-                    <button
-                      key={index}
-                      onClick={() =>
-                        handleAdd(
-                          item,
-                          setDiagnosisInput,
-                          diagnoses,
-                          setDiagnoses,
-                          "diagnosis"
-                        )
-                      }
-                      className="border border-gray-300 px-3 py-1 rounded text-sm bg-gray-50 hover:bg-blue-50"
-                    >
-                      {item}
-                    </button>
-                  ))
-                ) : (
-                  <span className="text-gray-400 text-sm">
-                    No suggestions yet
+            {diagnoses.length > 0 && (
+              <div>
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-sm text-gray-700 font-medium">
+                    Added Diagnoses
                   </span>
-                )}
+                  <button
+                    onClick={() => {
+                      setDiagnoses([]);
+                      setForm((prev) => ({ ...prev, diagnosis: [] }));
+                    }}
+                    className="text-red-500 text-sm hover:underline"
+                  >
+                    Clear all
+                  </button>
+                </div>
+
+                <div className="border border-gray-200 rounded p-3 bg-gray-50 space-y-2">
+                  {diagnoses.map((item, index) => (
+                    <div
+                      key={index}
+                      className="flex items-center justify-between"
+                    >
+                      <div className="text-sm">
+                        <strong>Diagnosis:</strong> {item.diagnosis} <br />
+                        <strong>Teeth:</strong> {item.teethSpecification}
+                      </div>
+                      <button
+                        onClick={() => {
+                          const newItems = diagnoses.filter(
+                            (_, i) => i !== index
+                          );
+                          setDiagnoses(newItems);
+                          setForm((prev) => ({ ...prev, diagnosis: newItems }));
+                        }}
+                        className="text-red-500 hover:text-red-700"
+                      >
+                        ×
+                      </button>
+                    </div>
+                  ))}
+                </div>
               </div>
-            </div>
+            )}
+
+            {/* Quick Type Section */}
+            <QuickTypeSection 
+              tab="Diagnosis"
+              quickTypeInputs={quickTypeInputs}
+              setQuickTypeInputs={setQuickTypeInputs}
+              quickTypes={quickTypes}
+              loadingQuickTypes={loadingQuickTypes}
+              handleAddQuickType={handleAddQuickType}
+              handleDeleteQuickType={handleDeleteQuickType}
+              handleUseQuickType={handleUseQuickType}
+            />
           </div>
         );
 
@@ -1259,7 +1681,7 @@ const handleRemoveChiefComplaint = (index) => {
                     className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400"
                   />
                   <input
-                    type="text"
+                    type="number"
                     value={treatmentTeeth}
                     onChange={(e) => setTreatmentTeeth(e.target.value)}
                     className="w-full pl-10 border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-1 focus:ring-blue-500"
@@ -1362,36 +1784,17 @@ const handleRemoveChiefComplaint = (index) => {
               </div>
             )}
 
-            <div>
-              <label className="block text-sm text-gray-700 mb-2">
-                Quick Type
-              </label>
-              <div className="flex flex-wrap gap-2">
-                {suggestions.treatmentPlan.length > 0 ? (
-                  suggestions.treatmentPlan.map((item, index) => (
-                    <button
-                      key={index}
-                      onClick={() =>
-                        handleAdd(
-                          item,
-                          setTreatmentPlanInput,
-                          treatmentPlans,
-                          setTreatmentPlans,
-                          "treatmentPlan"
-                        )
-                      }
-                      className="border border-gray-300 px-3 py-1 rounded text-sm bg-gray-50 hover:bg-blue-50"
-                    >
-                      {item}
-                    </button>
-                  ))
-                ) : (
-                  <span className="text-gray-400 text-sm">
-                    No suggestions yet
-                  </span>
-                )}
-              </div>
-            </div>
+            {/* Quick Type Section */}
+            <QuickTypeSection 
+              tab="Treatment Plan"
+              quickTypeInputs={quickTypeInputs}
+              setQuickTypeInputs={setQuickTypeInputs}
+              quickTypes={quickTypes}
+              loadingQuickTypes={loadingQuickTypes}
+              handleAddQuickType={handleAddQuickType}
+              handleDeleteQuickType={handleDeleteQuickType}
+              handleUseQuickType={handleUseQuickType}
+            />
           </div>
         );
 
@@ -1410,7 +1813,7 @@ const handleRemoveChiefComplaint = (index) => {
                     className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400"
                   />
                   <input
-                    type="text"
+                    type="number"
                     value={procedureTeeth}
                     onChange={(e) => setProcedureTeeth(e.target.value)}
                     className="w-full pl-10 border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-1 focus:ring-blue-500"
@@ -1529,7 +1932,9 @@ const handleRemoveChiefComplaint = (index) => {
             {procedures.length > 0 && (
               <div>
                 <div className="flex items-center justify-between mb-2">
-                  <span className="text-sm text-gray-700 font-medium">Added Procedures</span>
+                  <span className="text-sm text-gray-700 font-medium">
+                    Added Procedures
+                  </span>
                   <button
                     onClick={() => {
                       setProcedures([]);
@@ -1543,14 +1948,19 @@ const handleRemoveChiefComplaint = (index) => {
 
                 <div className="border border-gray-200 rounded p-3 bg-gray-50 space-y-2">
                   {procedures.map((item, index) => (
-                    <div key={index} className="flex items-center justify-between">
+                    <div
+                      key={index}
+                      className="flex items-center justify-between"
+                    >
                       <div className="text-sm">
                         <strong>Procedure:</strong> {item.procedure} <br />
                         <strong>Teeth:</strong> {item.teethSpecification}
                       </div>
                       <button
                         onClick={() => {
-                          const newItems = procedures.filter((_, i) => i !== index);
+                          const newItems = procedures.filter(
+                            (_, i) => i !== index
+                          );
                           setProcedures(newItems);
                           setForm((prev) => ({ ...prev, procedure: newItems }));
                         }}
@@ -1564,36 +1974,17 @@ const handleRemoveChiefComplaint = (index) => {
               </div>
             )}
 
-            <div>
-              <label className="block text-sm text-gray-700 mb-2">
-                Quick Type
-              </label>
-              <div className="flex flex-wrap gap-2">
-                {suggestions.diagnosis.length > 0 ? (
-                  suggestions.diagnosis.map((item, index) => (
-                    <button
-                      key={index}
-                      onClick={() =>
-                        handleAdd(
-                          item,
-                          setDiagnosisInput,
-                          diagnoses,
-                          setDiagnoses,
-                          "diagnosis"
-                        )
-                      }
-                      className="border border-gray-300 px-3 py-1 rounded text-sm bg-gray-50 hover:bg-blue-50"
-                    >
-                      {item}
-                    </button>
-                  ))
-                ) : (
-                  <span className="text-gray-400 text-sm">
-                    No suggestions yet
-                  </span>
-                )}
-              </div>
-            </div>
+            {/* Quick Type Section */}
+            <QuickTypeSection 
+              tab="Procedure"
+              quickTypeInputs={quickTypeInputs}
+              setQuickTypeInputs={setQuickTypeInputs}
+              quickTypes={quickTypes}
+              loadingQuickTypes={loadingQuickTypes}
+              handleAddQuickType={handleAddQuickType}
+              handleDeleteQuickType={handleDeleteQuickType}
+              handleUseQuickType={handleUseQuickType}
+            />
           </div>
         );
 
@@ -1640,42 +2031,126 @@ const handleRemoveChiefComplaint = (index) => {
                             />
                           </td>
                           <td className="px-4 py-2">
-                            <select
-                              value={med.frequency}
-                              onChange={(e) => {
-                                const updated = [...form.medication];
-                                updated[index].frequency = e.target.value;
-                                setForm({ ...form, medication: updated });
-                              }}
-                              className="w-full border border-gray-300 rounded px-2 py-1 bg-white focus:outline-none focus:ring-1 focus:ring-blue-500"
-                            >
-                              <option value="">Select</option>
-                              <option value="1-0-0">1-0-0</option>
-                              <option value="1-1-0">1-1-0</option>
-                              <option value="1-1-1">1-1-1</option>
-                              <option value="0-1-0">0-1-0</option>
-                              <option value="1-0-1">1-0-1</option>
-                              <option value="0-0-1">0-0-1</option>
-                              <option value="0-1-1">0-1-1</option>
-                            </select>
+                            <div className="flex flex-col gap-1">
+                              <select
+                                value={
+                                  [
+                                    "1-0-0",
+                                    "1-1-0",
+                                    "1-1-1",
+                                    "0-1-0",
+                                    "1-0-1",
+                                    "0-0-1",
+                                    "0-1-1",
+                                  ].includes(med.frequency)
+                                    ? med.frequency
+                                    : "Other"
+                                }
+                                onChange={(e) => {
+                                  const value = e.target.value;
+                                  const updated = [...form.medication];
+
+                                  if (value === "Other") {
+                                    updated[index].frequency = "";
+                                  } else {
+                                    updated[index].frequency = value;
+                                  }
+
+                                  setForm({ ...form, medication: updated });
+                                }}
+                                className="w-full border border-gray-300 rounded px-2 py-1 bg-white focus:outline-none focus:ring-1 focus:ring-blue-500"
+                              >
+                                <option value="">Select</option>
+                                <option value="1-0-0">1-0-0</option>
+                                <option value="1-1-0">1-1-0</option>
+                                <option value="1-1-1">1-1-1</option>
+                                <option value="0-1-0">0-1-0</option>
+                                <option value="1-0-1">1-0-1</option>
+                                <option value="0-0-1">0-0-1</option>
+                                <option value="0-1-1">0-1-1</option>
+                                <option value="Other">Other</option>
+                              </select>
+
+                              {![
+                                "1-0-0",
+                                "1-1-0",
+                                "1-1-1",
+                                "0-1-0",
+                                "1-0-1",
+                                "0-0-1",
+                                "0-1-1",
+                              ].includes(med.frequency) && (
+                                <input
+                                  type="text"
+                                  value={med.frequency}
+                                  onChange={(e) => {
+                                    const updated = [...form.medication];
+                                    updated[index].frequency = e.target.value;
+                                    setForm({ ...form, medication: updated });
+                                  }}
+                                  placeholder="Custom frequency..."
+                                  className="w-full border border-gray-300 rounded px-2 py-1 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                                />
+                              )}
+                            </div>
                           </td>
                           <td className="px-4 py-2">
-                            <select
-                              value={med.duration}
-                              onChange={(e) => {
-                                const updated = [...form.medication];
-                                updated[index].duration = e.target.value;
-                                setForm({ ...form, medication: updated });
-                              }}
-                              className="w-full border border-gray-300 rounded px-2 py-1 bg-white focus:outline-none focus:ring-1 focus:ring-blue-500"
-                            >
-                              <option value="">Select</option>
-                              <option value="1 Day">1 Day</option>
-                              <option value="3 Days">3 Days</option>
-                              <option value="5 Days">5 Days</option>
-                              <option value="7 Days">7 Days</option>
-                              <option value="14 Days">14 Days</option>
-                            </select>
+                            <div className="flex flex-col gap-1">
+                              <select
+                                value={
+                                  [
+                                    "1 Day",
+                                    "3 Days",
+                                    "5 Days",
+                                    "7 Days",
+                                    "14 Days",
+                                  ].includes(med.duration)
+                                    ? med.duration
+                                    : "Other"
+                                }
+                                onChange={(e) => {
+                                  const value = e.target.value;
+                                  const updated = [...form.medication];
+
+                                  if (value === "Other") {
+                                    updated[index].duration = "";
+                                  } else {
+                                    updated[index].duration = value;
+                                  }
+
+                                  setForm({ ...form, medication: updated });
+                                }}
+                                className="w-full border border-gray-300 rounded px-2 py-1 bg-white focus:outline-none focus:ring-1 focus:ring-blue-500"
+                              >
+                                <option value="">Select</option>
+                                <option value="1 Day">1 Day</option>
+                                <option value="3 Days">3 Days</option>
+                                <option value="5 Days">5 Days</option>
+                                <option value="7 Days">7 Days</option>
+                                <option value="14 Days">14 Days</option>
+                                <option value="Other">Other</option>
+                              </select>
+
+                              {![
+                                "1 Day",
+                                "3 Days",
+                                "5 Days",
+                                "7 Days",
+                                "14 Days",
+                              ].includes(med.duration) && (
+                                <input
+                                  type="text"
+                                  value={med.duration}
+                                  onChange={(e) => {
+                                    const updated = [...form.medication];
+                                    updated[index].duration = e.target.value;
+                                    setForm({ ...form, medication: updated });
+                                  }}
+                                  placeholder="Custom duration..."
+                                  className="w-full border border-gray-300 rounded px-2 py-1 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                                />
+                              )}
+                            </div>
                           </td>
                           <td className="px-4 py-2">
                             <div className="flex flex-col gap-1">
@@ -1856,36 +2331,17 @@ const handleRemoveChiefComplaint = (index) => {
               </div>
             )}
 
-            <div>
-              <label className="block text-sm text-gray-700 mb-2">
-                Quick Type
-              </label>
-              <div className="flex flex-wrap gap-2">
-                {suggestions.adviceInstruction.length > 0 ? (
-                  suggestions.adviceInstruction.map((item, index) => (
-                    <button
-                      key={index}
-                      onClick={() =>
-                        handleAdd(
-                          item,
-                          setAdviceInstructionInput,
-                          adviceInstructions,
-                          setAdviceInstructions,
-                          "adviceInstruction"
-                        )
-                      }
-                      className="border border-gray-300 px-3 py-1 rounded text-sm bg-gray-50 hover:bg-blue-50"
-                    >
-                      {item}
-                    </button>
-                  ))
-                ) : (
-                  <span className="text-gray-400 text-sm">
-                    No suggestions yet
-                  </span>
-                )}
-              </div>
-            </div>
+            {/* Quick Type Section */}
+            <QuickTypeSection 
+              tab="Advice Instructions"
+              quickTypeInputs={quickTypeInputs}
+              setQuickTypeInputs={setQuickTypeInputs}
+              quickTypes={quickTypes}
+              loadingQuickTypes={loadingQuickTypes}
+              handleAddQuickType={handleAddQuickType}
+              handleDeleteQuickType={handleDeleteQuickType}
+              handleUseQuickType={handleUseQuickType}
+            />
           </div>
         );
 

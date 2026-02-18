@@ -52,10 +52,32 @@ const Prescription = () => {
         console.error(err);
         toast.error("Failed to Send prescription PDF");
       }
-    }
+  }
 
-  useEffect(() => {
-    const fetchPrescriptions = async () => {
+  const deletePrescription= async (prescriptionId)=>{
+    if(!prescriptionId) return toast.error("Prescription ID missing");
+    const confirmed = window.confirm(
+      "Are you sure you want to delete this prescription?\nThis action cannot be undone."
+    );
+
+    if (!confirmed) return;
+    try {
+      const response= await fetch(`${API_BASE}/api/prescription-delete/${prescriptionId}`, {
+        method: "DELETE",
+      });
+      if(response.ok){
+        toast.success("Prescription Deleted Successfully");
+        fetchPrescriptions();
+      }else{
+        toast.error("Failed to Delete Prescription");
+      }
+    } catch (error) {
+      console.log(error);
+      toast.error("Failed to Delete Prescription");
+    }
+  }
+
+  const fetchPrescriptions = async () => {
       setLoading(true);
       try {
         const query = new URLSearchParams({
@@ -81,11 +103,11 @@ const Prescription = () => {
       } finally {
         setLoading(false);
       }
-    };
+  };
 
+  useEffect(() => {
     fetchPrescriptions();
   }, [search, page, limit, startDate, endDate]);
-
 
   return (
     <div className="bg-gray-300 min-h-screen">
@@ -196,6 +218,7 @@ const Prescription = () => {
                   <th className="px-6 py-3 text-left text-sm font-medium text-gray-900 border-r border-gray-300">Consultation ID</th>
                   <th className="px-6 py-3 text-left text-sm font-medium text-gray-900 border-r border-gray-300"></th>
                   <th className="px-6 py-3 text-left text-sm font-medium text-gray-900 border-r border-gray-300"></th>
+                  <th className="px-6 py-3 text-left text-sm font-medium text-gray-900 border-r border-gray-300"></th>
                 </tr>
               </thead>
               <tbody className="bg-white">
@@ -240,6 +263,14 @@ const Prescription = () => {
                           className="px-5 py-2 text-sm font-medium bg-yellow-500 hover:bg-yellow-600 text-white rounded"
                         >
                           Send
+                        </button>
+                      </td>
+                      <td className="px-6 py-3 text-sm text-gray-700">
+                        <button
+                          onClick={() => deletePrescription(p.prescription_id)}
+                          className="px-5 py-2 text-sm font-medium bg-red-500 hover:bg-red-600 text-white rounded"
+                        >
+                          Delete
                         </button>
                       </td>
                     </tr>

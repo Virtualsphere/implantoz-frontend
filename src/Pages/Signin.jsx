@@ -115,14 +115,6 @@ const Signin = () => {
             </button>
           </div>
 
-          {/* Signup Redirect */}
-          <p className="text-center text-sm mt-6">
-            I don’t have an account?{" "}
-            <a href="/signup" className="text-blue-600 font-medium">
-              Sign Up
-            </a>
-          </p>
-
           <p className="text-center text-sm mt-6">
             don't remeber password?{" "}
             <a href="/reset-password" className="text-blue-600 font-medium">

@@ -196,6 +196,15 @@ const Layout = () => {
                 <div className="absolute right-0 mt-2 w-40 bg-white shadow-lg rounded-md border border-gray-200 z-50 p-2">
                   <button
                     onClick={() => {
+                      navigate("/signup");
+                      setShowSettingsBox(false);
+                    }}
+                    className="w-full text-left px-3 py-1.5 text-sm hover:bg-gray-100 rounded"
+                  >
+                    Sign Up
+                  </button>
+                  <button
+                    onClick={() => {
                       navigate("/header/form");
                       setShowSettingsBox(false);
                     }}

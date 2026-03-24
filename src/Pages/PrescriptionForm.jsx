@@ -1184,7 +1184,7 @@ const PrescriptionForm = () => {
                     className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400"
                   />
                   <input
-                    type="number"
+                    type="text"
                     value={examinationTeeth}
                     onChange={(e) => setExaminationTeeth(e.target.value)}
                     className="w-full pl-10 border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-1 focus:ring-blue-500"
@@ -1381,7 +1381,7 @@ const PrescriptionForm = () => {
                     className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400"
                   />
                   <input
-                    type="number"
+                    type="text"
                     value={investigationTeeth}
                     onChange={(e) => setInvestigationTeeth(e.target.value)}
                     className="w-full pl-10 border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-1 focus:ring-blue-500"
@@ -1578,7 +1578,7 @@ const PrescriptionForm = () => {
                     className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400"
                   />
                   <input
-                    type="number"
+                    type="text"
                     value={diagnosisTeeth}
                     onChange={(e) => setDiagnosisTeeth(e.target.value)}
                     className="w-full pl-10 border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-1 focus:ring-blue-500"
@@ -1681,7 +1681,7 @@ const PrescriptionForm = () => {
                     className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400"
                   />
                   <input
-                    type="number"
+                    type="text"
                     value={treatmentTeeth}
                     onChange={(e) => setTreatmentTeeth(e.target.value)}
                     className="w-full pl-10 border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-1 focus:ring-blue-500"
@@ -1813,7 +1813,7 @@ const PrescriptionForm = () => {
                     className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400"
                   />
                   <input
-                    type="number"
+                    type="text"
                     value={procedureTeeth}
                     onChange={(e) => setProcedureTeeth(e.target.value)}
                     className="w-full pl-10 border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-1 focus:ring-blue-500"
@@ -2139,23 +2139,14 @@ const PrescriptionForm = () => {
                                 "14 Days",
                               ].includes(med.duration) && (
                                 <input
-                                  type="number"
-                                  min="1"
-                                  value={med.duration.replace(/\D/g, "")}
+                                  type="text"
+                                  value={med.duration}
                                   onChange={(e) => {
                                     const updated = [...form.medication];
                                     updated[index].duration = e.target.value;
                                     setForm({ ...form, medication: updated });
                                   }}
-                                  onBlur={(e) => {
-                                    const value = e.target.value;
-                                    if (value) {
-                                      const updated = [...form.medication];
-                                      updated[index].duration = `${value} Days`;
-                                      setForm({ ...form, medication: updated });
-                                    }
-                                  }}
-                                  placeholder="Enter days"
+                                  placeholder="Custom duration..."
                                   className="w-full border border-gray-300 rounded px-2 py-1 focus:outline-none focus:ring-1 focus:ring-blue-500"
                                 />
                               )}
